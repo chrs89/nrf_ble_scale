@@ -1,0 +1,15 @@
+&spi0 {status = "disabled";};
+&spi1 {status = "disabled";};
+&i2c0 {status = "disabled";};
+
+&i2c1 {
+	status = "okay";
+	compatible = "nordic,nrf-twim";
+	nau7802: nau7802@2a {
+		compatible = "nuvoton,nau7802";
+		reg = <0x2a>;
+		drdy-gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
+		conversions-per-second = <80>; //SPS
+		gain = <128>;
+	};
+};
