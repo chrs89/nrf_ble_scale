@@ -14,6 +14,10 @@
 LOG_MODULE_REGISTER(NAU7802, LOG_LEVEL_DBG);
 // LOG_MODULE_REGISTER(NAU7802, CONFIG_I2C_LOG_LEVEL);
 
+#if DT_NUM_INST_STATUS_OKAY(nuvoton_nau7802) == 0
+#warning "Custom NAU7802 driver enabled without any devices"
+#endif
+
 /**************************************************************************/
 /*!
     @brief Perform a soft reset
@@ -142,6 +146,7 @@ static int nau7802_enable(const struct nau7802_config *config, bool flag)
         LOG_ERR("Chip is not powered up, PUR bit is 0.");
         return EIO;
     }
+
     /* success*/
     return 0;
 }
@@ -522,7 +527,12 @@ static const struct nau7802_driver_api nau7802_api = {
     .setRate_runtime = &setRate_runtime,
 #if CONFIG_NAU7802_TRIGGER
     .trigger_set = &trigger_set,
-#endif
+
+#if defined CONFIG_NAU7802_TRIGGER_OWN_THREAD
+    .ownThread_suspend = &ownThread_suspend,
+    .ownThread_resume = &ownThread_resume,
+#endif /*CONFIG_NAU7802_TRIGGER*/
+#endif /*CONFIG_NAU7802_TRIGGER_OWN_THREAD*/
 };
 
 /* Init function*/
@@ -669,10 +679,57 @@ static int nau7802_init(const struct device *dev)
     }
 
 #endif
+    /*!
+        RDY: Provide Time for stabalizing of Analog Part before host powers down
+    */
+    k_sleep(K_MSEC(600));
 
     /* success*/
     LOG_DBG("Chip init done.");
+
     return 0;
+}
+
+static int custom_nau7802_pm_action(const struct device *dev,
+                                    enum pm_device_action action)
+{
+    const struct nau7802_config *config = dev->config;
+    int ret = 0;
+
+    switch (action)
+    {
+    case PM_DEVICE_ACTION_RESUME:
+        LOG_INF("Resuming NAU7802 sensor");
+        /* Re-initialize the chip */
+        ret = nau7802_enable(config, true);
+        if (ret != 0)
+        {
+            LOG_DBG("PM_DEVICE_ACTION_Resuming Failed %d", ret);
+        }
+        if (ret == 0)
+        {
+            LOG_DBG("PM_DEVICE_ACTION_Resuming Success");
+        }
+        break;
+    case PM_DEVICE_ACTION_SUSPEND:
+        LOG_INF("Suspending NAU7802 sensor");
+        /* Put the chip into sleep mode */
+        ret = nau7802_enable(config, false);
+
+        if (ret != 0)
+        {
+            LOG_DBG("PM_DEVICE_ACTION_SUSPEND: Failed %d", ret);
+        }
+        if (ret == 0)
+        {
+            LOG_DBG("PM_DEVICE_ACTION_SUSPEND: Success");
+        }
+        break;
+    default:
+        return -ENOTSUP;
+    }
+
+    return ret;
 }
 
 /* Macro function to selectively include the drdy gpio pin */
@@ -690,9 +747,16 @@ static int nau7802_init(const struct device *dev)
             .bus = I2C_DT_SPEC_INST_GET(inst),                                        \
         .conversions_per_second_idx = DT_INST_ENUM_IDX(inst, conversions_per_second), \
         .gain_idx = DT_INST_ENUM_IDX(inst, gain)};                                    \
-    SENSOR_DEVICE_DT_INST_DEFINE(inst, nau7802_init, NULL,                            \
+    /* Power Management device initialization */                                      \
+    PM_DEVICE_DT_INST_DEFINE(inst, custom_nau7802_pm_action);                         \
+    /* Sensor device instantiation */                                                 \
+    SENSOR_DEVICE_DT_INST_DEFINE(inst,                                                \
+                                 nau7802_init,                                        \
+                                 PM_DEVICE_DT_INST_GET(inst),                         \
                                  &nau7802_data_##inst,                                \
-                                 &nau7802_config_##inst, POST_KERNEL,                 \
-                                 CONFIG_SENSOR_INIT_PRIORITY, &nau7802_api);
+                                 &nau7802_config_##inst,                              \
+                                 POST_KERNEL,                                         \
+                                 CONFIG_SENSOR_INIT_PRIORITY,                         \
+                                 &nau7802_api);
 
 DT_INST_FOREACH_STATUS_OKAY(CREATE_NAU7802_INST)

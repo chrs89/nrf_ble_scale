@@ -1,8 +1,4 @@
 
-
-#include <string.h>
-#include <zephyr/kernel.h>
-#include <zephyr/device.h>
 #include <zephyr/drivers/flash.h>
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/fs/nvs.h>
@@ -44,7 +40,7 @@ int nau7802_nvs_init(void)
     }
 
     fs.sector_size = info.size;
-    fs.sector_count = 2U; // Set according to your needs
+    fs.sector_count = 2U;
 
     rc = nvs_mount(&fs);
     if (rc)
@@ -61,7 +57,7 @@ int store_calibration_data_nvs(int32_t offset, float32_t calibration_factor)
 
     // Initialize a const structure at declaration
     const struct calibration_data_v2 cal_data = {
-        .zero_offset = offset,            // Set offset value
+        .zero_offset = offset,                    // Set offset value
         .calibration_factor = calibration_factor, // Set gain value, scaled by FACTOR
     };
 
@@ -85,11 +81,8 @@ int load_calibration_data_nvs(struct calibration_data_v2 *cal_data)
         return ret;
     }
 
-    
-
     // Log the offset and the recalculated gain
     LOG_INF("Calibration data successfully loaded from NVS: Offset = %d, Gain = %d",
             cal_data->zero_offset, cal_data->calibration_factor);
     return 0;
 }
-

@@ -14,6 +14,7 @@
         "limits": "c",
         "device.h": "c",
         "shell.h": "c",
-        "shell_commands.h": "c"
+        "shell_commands.h": "c",
+        "stats.h": "c"
     }
 }

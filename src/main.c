@@ -245,6 +245,22 @@ int cmd_setCal_nvs(const struct shell *shell, size_t argc, char **argv)
         return 0;
 }
 
+void cmd_suspend_nau7802Thread(const struct shell *shell, size_t argc, char **argv)
+{
+        struct nau7802_data *data = nau7802->data;
+        int err;
+
+        nau7802_ownThreadSuspend(nau7802);
+}
+
+void cmd_resume_nau7802Thread(const struct shell *shell, size_t argc, char **argv)
+{
+        struct nau7802_data *data = nau7802->data;
+        int err;
+
+        nau7802_ownThreadResume(nau7802);
+}
+
 int main(void)
 {
         int err;
@@ -255,7 +271,8 @@ int main(void)
         /* Init Shell Functions */
         SHELL_CMD_REGISTER(get_offset, NULL, "Fetch 50 sensor samples, average, and create calibration data", cmd_get_offset);
         SHELL_CMD_REGISTER(get_calFactor, NULL, "Fetch 50 sensor samples, average, and create calibration data", cmd_get_calFactor);
-        SHELL_CMD_REGISTER(setCal_nvs, NULL, "Write Cal_Dataset to NVS", cmd_setCal_nvs);
+        SHELL_CMD_REGISTER(nau_suspend, NULL, "Suspend NAU7802 Thread", cmd_suspend_nau7802Thread);
+        SHELL_CMD_REGISTER(nau_resume, NULL, "Resume NAU7802 Thread", cmd_resume_nau7802Thread);
 
         // Ensure the device is ready before proceeding
         if (!device_is_ready(nau7802))
@@ -271,7 +288,7 @@ int main(void)
         };
 
         // Register the callback function for the trigger
-        // err = nau7802_trigger_set(nau7802, &trig, sensor_data_ready_callback);
+        err = nau7802_trigger_set(nau7802, &trig, sensor_data_ready_callback);
         if (err < 0)
         {
                 LOG_ERR("Could not set trigger callback (%d)", err);
@@ -284,32 +301,32 @@ int main(void)
         // Main loop: Wait indefinitely for interrupts
         while (1)
         {
-                err = nau7802_sample_fetch(nau7802);
-                if (err < 0)
-                {
-                        LOG_ERR("Could not fetch sample (%d)", err);
-                        return;
-                }
+                // err = nau7802_sample_fetch(nau7802);
+                // if (err < 0)
+                // {
+                //         LOG_ERR("Could not fetch sample (%d)", err);
+                //         return;
+                // }
 
-                // Get the force sensor value
-                err = nau7802_channel_get(nau7802, SENSOR_CHAN_FORCE, &force_val);
-                if (err < 0)
-                {
-                        LOG_ERR("Could not get sample");
-                        return;
-                }
+                // // Get the force sensor value
+                // err = nau7802_channel_get(nau7802, SENSOR_CHAN_FORCE, &force_val);
+                // if (err < 0)
+                // {
+                //         LOG_ERR("Could not get sample");
+                //         return;
+                // }
 
-                // Get the force sensor value
-                err = nau7802_channel_get_raw(nau7802, SENSOR_CHAN_FORCE, &raw_val);
-                if (err < 0)
-                {
-                        LOG_ERR("Could not get sample");
-                        return;
-                }
+                // // Get the force sensor value
+                // err = nau7802_channel_get_raw(nau7802, SENSOR_CHAN_FORCE, &raw_val);
+                // if (err < 0)
+                // {
+                //         LOG_ERR("Could not get sample");
+                //         return;
+                // }
 
-                LOG_INF("Force value: %f | Raw value: %d", sensor_value_to_float(&force_val), raw_val.val1);
+                // LOG_INF("Force value: %f | Raw value: %d", sensor_value_to_float(&force_val), raw_val.val1);
 
-                k_sleep(K_SECONDS(1)); // Delay between readings (adjust if needed)
+                k_sleep(K_MSEC(1000)); // Delay between readings (adjust if needed)
         }
 
         return 0;

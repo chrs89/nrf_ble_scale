@@ -5,11 +5,43 @@
 &i2c1 {
 	status = "okay";
 	compatible = "nordic,nrf-twim";
+
+	pinctrl-0 = <&i2c1_default>;
+	pinctrl-1 = <&i2c1_sleep>;
+	pinctrl-names = "default", "sleep";
+	/*enable device runtime pm for i2c */
+	zephyr,pm-device-runtime-auto;
+
+
 	nau7802: nau7802@2a {
 		compatible = "nuvoton,nau7802";
 		reg = <0x2a>;
 		drdy-gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
 		conversions-per-second = <80>; //SPS
 		gain = <128>;
+
+		/*enable device runtime pm for bme sensor */
+		zephyr,pm-device-runtime-auto;
+
+		/* Default power-up the device on boot */
+		status = "okay";  // Ensures the device is active (not disabled)
+	};
+};
+
+
+&pinctrl {
+	i2c1_default: i2c1_default {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 0, 30)>,
+					<NRF_PSEL(TWIM_SCL, 0, 31)>;
+		};
+	};
+
+	i2c1_sleep: i2c1_sleep {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 0, 30)>,
+					<NRF_PSEL(TWIM_SCL, 0, 31)>;
+			low-power-enable;
+		};
 	};
 };

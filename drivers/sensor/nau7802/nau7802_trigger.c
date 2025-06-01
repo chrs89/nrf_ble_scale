@@ -7,6 +7,8 @@
 #include "nau7802.h"
 #include "nau7802_regmap.h"
 
+#define DT_DRV_COMPAT nuvoton_nau7802
+
 /* Declare the module to logging submodule*/
 LOG_MODULE_DECLARE(NAU7802, LOG_LEVEL_DBG);
 //  LOG_MODULE_DECLARE(NAU7802, CONFIG_I2C_LOG_LEVEL);
@@ -54,12 +56,58 @@ static void nau7802_thread(void *p1, void *p2, void *p3)
 
     const struct device *nau7802 = (const struct device *)p1;
     struct nau7802_data *data = nau7802->data;
+    data->threadState = THREAD_RUNNING;
+    LOG_INF("Thread State set: %d", data->threadState);
 
     while (1)
     {
         k_sem_take(&data->gpio_sem, K_FOREVER);
         nau7802_handle_interrupt(nau7802);
     }
+}
+
+int ownThread_suspend(const struct device *dev)
+{
+    int ret;
+    struct nau7802_data *data = dev->data;
+    k_thread_suspend(&data->thread);
+    data->threadState = THREAD_SUSPENDED;
+    LOG_INF("NAU7802_THREAD_SUSPENDED");
+
+    /* Check if device runtime power managemeng is enabled */
+    if (IS_ENABLED(CONFIG_PM_DEVICE_RUNTIME))
+    {
+
+        /* let power management system know that device is no longer needed needed  */
+        ret = pm_device_runtime_put(dev);
+        if (ret != 0)
+        {
+            LOG_DBG("PM_DEVICE_ACTION_Resuming Failed %d", ret);
+        }
+    }
+
+    return 0;
+}
+
+int ownThread_resume(const struct device *dev)
+{
+    int ret;
+    struct nau7802_data *data = dev->data;
+    k_thread_resume(&data->thread);
+    data->threadState = THREAD_RUNNING;
+    LOG_INF("NAU7802_THREAD_RESUMED");
+
+    if (IS_ENABLED(CONFIG_PM_DEVICE_RUNTIME))
+    {
+        /* Check if device runtime power managemeng is enabled */
+        ret = pm_device_runtime_get(dev);
+        if (ret != 0)
+        {
+            LOG_DBG("PM_DEVICE_ACTION_Resuming Failed %d", ret);
+        }
+    }
+
+    return 0;
 }
 #endif /* CONFIG_NAU7802_TRIGGER_OWN_THREAD */
 
