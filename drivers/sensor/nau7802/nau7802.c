@@ -300,6 +300,18 @@ static int setRate_runtime(const struct device *dev, const struct nau7802_config
 // static int nau7802_setOffset(const struct device *nau7802, const struct sensor_value *offset)
 static int nau7802_setOffset(const struct device *nau7802, const struct sensor_value *offset)
 {
+    if (nau7802 == NULL || nau7802->data == NULL)
+    {
+        LOG_ERR("Device or device data is NULL");
+        return -ENOTSUP;
+    }
+
+    if (offset == NULL)
+    {
+        LOG_ERR("Offset value couldn't be NULL");
+        return -EINVAL;
+    }
+
     struct nau7802_data *data = nau7802->data;
 
     if (offset == NULL)
@@ -309,7 +321,7 @@ static int nau7802_setOffset(const struct device *nau7802, const struct sensor_v
     }
 
     /* Reconstruct the input value to float*/
-    memcpy(&data->zero_offset, &offset->val1, sizeof(float32_t));
+    memcpy(&data->zero_offset, &offset->val1, sizeof(int32_t));
 
     /* success*/
     return 0;
@@ -325,8 +337,8 @@ static int nau7802_setOffset(const struct device *nau7802, const struct sensor_v
 /**************************************************************************/
 // static int nau7802_setCalibration(const struct device *nau7802, const struct sensor_value
 // *calibrationFactor)
-static int nau7802_setCalibration(const struct device *nau7802,
-                                  const struct sensor_value *calibrationFactor)
+static int nau7802_setCalibrationFactor(const struct device *nau7802,
+                                        const struct sensor_value *calibrationFactor)
 {
     struct nau7802_data *data = nau7802->data;
 
@@ -337,7 +349,8 @@ static int nau7802_setCalibration(const struct device *nau7802,
     }
 
     /* Reconstruct the input value to float*/
-    memcpy(&data->calibration_factor, &calibrationFactor->val1, sizeof(float32_t));
+    float32_t calibFactor = (float32_t)sensor_value_to_float(calibrationFactor);
+    memcpy(&data->calibration_factor, &calibFactor, sizeof(float32_t));
 
     /* success*/
     return 0;
@@ -416,8 +429,9 @@ static int attr_set(const struct device *dev, enum sensor_channel chan,
     {
     case SENSOR_ATTR_OFFSET:
         return nau7802_setOffset(dev, val);
-    case SENSOR_ATTR_CALIBRATION:
-        return nau7802_setCalibration(dev, val);
+
+    case SENSOR_ATTR_Manufacturing_CALIBRATION_FACTOR:
+        return nau7802_setCalibrationFactor(dev, val);
 
     default:
         LOG_WRN("attr_set() does not support this attribute.");
@@ -469,7 +483,6 @@ static int channel_get(const struct device *dev, enum sensor_channel chan,
                        struct sensor_value *val)
 {
     struct nau7802_data *data = dev->data;
-    struct calibration_data_v2 *calData = &(data->cal_data);
     float uval;
 
     if ((enum sensor_channel_nuvoton_nau7802)chan != SENSOR_CHAN_FORCE)
@@ -477,31 +490,20 @@ static int channel_get(const struct device *dev, enum sensor_channel chan,
         return -ENOTSUP;
     }
 
-    /* convert the ADC value to force value */
-
-    uval = ((float32_t)(data->sample) - calData->zero_offset) * (1 / calData->calibration_factor);
-    sensor_value_from_float(val, uval);
-
-    LOG_INF("Force_Value(Float): %f", uval);
-
-    return 0;
-}
-
-static int channel_get_raw(const struct device *dev, enum sensor_channel chan,
-                           struct sensor_value *val)
-{
-    struct nau7802_data *data = dev->data;
-    float uval;
-
-    if ((enum sensor_channel_nuvoton_nau7802)chan != SENSOR_CHAN_FORCE)
+    switch (chan)
     {
+    case SENSOR_CHAN_FORCE:
+        /* convert the ADC value to force value */
+        uval = ((float32_t)(data->sample) - data->zero_offset) * (1 / data->calibration_factor);
+        sensor_value_from_float(val, uval);
+        break;
+    case SENSOR_CHAN_RAW:
+        uval = (float32_t)(data->sample) * 1.0 + 0; // Operands indicate that on purpose Cal_factor and offset is not affecting value
+        sensor_value_from_float(val, uval);
+        break;
+    default:
         return -ENOTSUP;
     }
-
-    /* convert the ADC value to force value */
-
-    uval = (float32_t)(data->sample) * 1.0 + 0; // Operands indicate that on purpose Cal_factor and offset is not affecting value
-    sensor_value_from_float(val, uval);
 
     return 0;
 }
@@ -522,7 +524,6 @@ static const struct sensor_driver_api nau7802_api = {
 static const struct nau7802_driver_api nau7802_api = {
     .attr_set = &attr_set,
     .channel_get = &channel_get,
-    .channel_get_raw = &channel_get_raw,
     .sample_fetch = &sample_fetch,
     .setRate_runtime = &setRate_runtime,
 #if CONFIG_NAU7802_TRIGGER
@@ -627,7 +628,7 @@ static int nau7802_init(const struct device *dev)
     /* initialize the offset value and calibration factor */
     /* This setting output the raw setting*/
     data->zero_offset = 0;
-    data->calibration_factor = 1;
+    data->calibration_factor = 1.0;
 
     /* Conduct internal calibration*/
     ret = nau7802_IntCalibration(config, NAU7802_CALMOD_OFFSET);
@@ -646,7 +647,7 @@ static int nau7802_init(const struct device *dev)
     }
 
     /*Set Calibration Data from NVS --> nau7802 device*/
-    ret = load_calibration_data_nvs(&data->cal_data);
+    ret = load_calibration_data_nvs(data);
     if (ret != 0)
     {
         LOG_ERR("Failed to load calibration data.");
@@ -657,18 +658,18 @@ static int nau7802_init(const struct device *dev)
     }
     LOG_INF("Loaded Calibration Data: Zero_Offset = %d, Calibration_Factor = %f", data->zero_offset, data->calibration_factor);
 
-    /* Load Calib. Data*/
-    struct calibration_data_v2 test_data;
-    ret = load_calibration_data_nvs(&test_data);
-    if (ret != 0)
-    {
-        LOG_ERR("Failed to load calibration data.");
-    }
-    else
-    {
-        LOG_INF("Loaded Calibration Data: Zero_Offset = %d, Calibration_Factor = %f", test_data.zero_offset, test_data.calibration_factor);
-    }
-    LOG_INF("Loaded Calibration Data: Zero_Offset = %d, Calibration_Factor = %f", test_data.zero_offset, test_data.calibration_factor);
+    // /* Load Calib. Data*/
+    // struct nau7802_data test_data;
+    // ret = load_calibration_data_nvs(&test_data);
+    // if (ret != 0)
+    // {
+    //     LOG_ERR("Failed to load calibration data.");
+    // }
+    // else
+    // {
+    //     LOG_INF("Loaded Calibration Data: Zero_Offset = %d, Calibration_Factor = %f", test_data.zero_offset, test_data.calibration_factor);
+    // }
+    // LOG_INF("Loaded Calibration Data: Zero_Offset = %d, Calibration_Factor = %f", test_data.zero_offset, test_data.calibration_factor);
 
 #ifdef CONFIG_NAU7802_TRIGGER
     ret = nau7802_init_interrupt(dev);

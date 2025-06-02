@@ -56,9 +56,10 @@ int store_calibration_data_nvs(int32_t offset, float32_t calibration_factor)
 {
 
     // Initialize a const structure at declaration
-    const struct calibration_data_v2 cal_data = {
+    const struct calibDataManuf cal_data = {
         .zero_offset = offset,                    // Set offset value
         .calibration_factor = calibration_factor, // Set gain value, scaled by FACTOR
+
     };
 
     int ret = nvs_write(&fs, CALIBRATION_ID, (const void *)(&cal_data), sizeof(cal_data));
@@ -72,17 +73,27 @@ int store_calibration_data_nvs(int32_t offset, float32_t calibration_factor)
 }
 
 // Load calibration data
-int load_calibration_data_nvs(struct calibration_data_v2 *cal_data)
+int load_calibration_data_nvs(struct nau7802_data *data)
 {
-    int ret = nvs_read(&fs, CALIBRATION_ID, (void *)cal_data, sizeof(*cal_data));
-    if (ret != 0)
-    {
-        LOG_ERR("Failed to read calibration data from NVS, error code: %d", ret);
-        return ret;
-    }
+
+    LOG_INF("Function Call load_calibration_data_nvs");
+
+    const struct calibDataManuf cal_dataRead;
+    int ret = 0;
+
+    ret = nvs_read(&fs, CALIBRATION_ID, (void *)&cal_dataRead, sizeof(cal_dataRead));
+    // if (ret != 0)
+    // {
+    //     LOG_ERR("Failed to read calibration data from NVS, error code: %d", ret);
+    //     return ret;
+    // }
+
+    memcpy(&data->zero_offset, (const void *)&cal_dataRead.zero_offset, sizeof(int32_t));
+    memcpy(&data->calibration_factor, (const void *)&cal_dataRead.calibration_factor, sizeof(float32_t));
 
     // Log the offset and the recalculated gain
     LOG_INF("Calibration data successfully loaded from NVS: Offset = %d, Gain = %d",
-            cal_data->zero_offset, cal_data->calibration_factor);
+            data->zero_offset, data->calibration_factor);
+
     return 0;
 }

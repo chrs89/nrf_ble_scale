@@ -35,7 +35,7 @@ static int main_set_sample_rate(const struct device *dev, uint16_t rate_idx)
 }
 
 // Callback function to handle the interrupt when new data is ready
-static void sensor_data_ready_callback(const struct device *dev, const struct sensor_trigger *trig)
+static int sensor_data_ready_callback(const struct device *dev, const struct sensor_trigger *trig)
 {
         int err;
         struct sensor_value force_val;
@@ -62,7 +62,7 @@ static void sensor_data_ready_callback(const struct device *dev, const struct se
         if (err < 0)
         {
                 LOG_ERR("Could not fetch sample (%d)", err);
-                return;
+                return -ENODATA;
         }
 
         // Get the force sensor value
@@ -70,10 +70,10 @@ static void sensor_data_ready_callback(const struct device *dev, const struct se
         if (err < 0)
         {
                 LOG_ERR("Could not get sample");
-                return;
+                return -ENODATA;
         }
 
-        LOG_INF("Force value: %d", force_val.val1);
+        // LOG_INF("Force value: %d", force_val.val1);
 }
 
 // Function to fetch 10 sensor samples, average them, and create the calibration data
@@ -96,15 +96,16 @@ int get_offset_data(const struct device *dev)
                 if (err < 0)
                 {
                         LOG_ERR("Could not fetch sample (%d)", err);
-                        return;
+                        return -ENODATA;
                 }
 
                 // Get the force sensor value
-                err = nau7802_channel_get_raw(dev, SENSOR_CHAN_FORCE, &force_val);
+                err = nau7802_channel_get(dev, SENSOR_CHAN_RAW, &force_val);
                 if (err < 0)
                 {
                         LOG_ERR("Could not get sample");
-                        return;
+                        return -ENODATA;
+                        ;
                 }
 
                 LOG_INF("Force value: %d", force_val.val1);
@@ -117,8 +118,8 @@ int get_offset_data(const struct device *dev)
         }
 
         // Calculate the average
-        data->cal_data.zero_offset = -(sum / 50); // Average the offset (sensor value)
-        LOG_INF("Calculated offset: %d", data->cal_data.zero_offset);
+        data->zero_offset = -(sum / 50); // Average the offset (sensor value)
+        LOG_INF("Calculated offset: %d", data->zero_offset);
 
         return 0;
 }
@@ -157,15 +158,15 @@ int get_calFactor_data(const struct device *dev, float32_t cal_weight)
                 if (err < 0)
                 {
                         LOG_ERR("Could not fetch sample (%d)", err);
-                        return;
+                        return -ENODATA;
                 }
 
                 // Get the force sensor value
-                err = nau7802_channel_get_raw(dev, SENSOR_CHAN_FORCE, &force_val);
+                err = nau7802_channel_get(dev, SENSOR_CHAN_RAW, &force_val);
                 if (err < 0)
                 {
                         LOG_ERR("Could not get sample");
-                        return;
+                        return -ENODATA;;
                 }
 
                 LOG_INF("Force value: %d", force_val.val1);
@@ -178,8 +179,8 @@ int get_calFactor_data(const struct device *dev, float32_t cal_weight)
         }
 
         // Calculate the average
-        data->cal_data.calibration_factor = ((sum / 50) - data->cal_data.zero_offset) / cal_weight;
-        LOG_INF("Calculated Calibration Factor: %f | Calibration Weight: %f", data->cal_data.calibration_factor, cal_weight);
+        data->calibration_factor = ((sum / 50) - data->zero_offset) / cal_weight;
+        LOG_INF("Calculated Calibration Factor: %f | Calibration Weight: %f", data->calibration_factor, cal_weight);
 
         return 0;
 }
@@ -221,7 +222,7 @@ int set_calData_nvs(const struct device *dev)
 
         struct nau7802_data *data = nau7802->data;
 
-        err = store_calibration_data_nvs(data->cal_data.zero_offset, (float32_t)data->cal_data.calibration_factor);
+        err = store_calibration_data_nvs(data->zero_offset, (float32_t)data->calibration_factor);
         if (err != 0)
         {
                 LOG_ERR("Error func:set_calData_nvs, %d", err);
@@ -317,7 +318,7 @@ int main(void)
                 // }
 
                 // // Get the force sensor value
-                // err = nau7802_channel_get_raw(nau7802, SENSOR_CHAN_FORCE, &raw_val);
+                // err = nau7802_channel_get(nau7802, SENSOR_CHAN_RAW, &raw_val);
                 // if (err < 0)
                 // {
                 //         LOG_ERR("Could not get sample");

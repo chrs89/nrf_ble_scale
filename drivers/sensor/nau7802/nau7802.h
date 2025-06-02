@@ -90,7 +90,7 @@ typedef enum _thread_state
 } thread_state;
 
 /*calibration data */
-struct calibration_data_v2
+struct calibDataManuf
 {
     int32_t zero_offset;
     float32_t calibration_factor;
@@ -102,6 +102,15 @@ enum sensor_channel_nuvoton_nau7802
 {
     /* Force reading in Newton*/
     SENSOR_CHAN_FORCE = SENSOR_CHAN_PRIV_START,
+    SENSOR_CHAN_RAW = SENSOR_CHAN_PRIV_START + 1,
+};
+
+/* Define a channel for force reading*/
+enum sensor_attr_nuvoton_nau7802
+{
+    /* Force reading in Newton*/
+    SENSOR_ATTR_Manufacturing_CALIBRATION_FACTOR = SENSOR_ATTR_PRIV_START,
+    SENSOR_ATTR_Manufacturing_ZERO_OFFSET = SENSOR_ATTR_PRIV_START + 1,
 };
 
 /* Define data (RAM) and configuration (ROM) structures: */
@@ -111,8 +120,6 @@ struct nau7802_data
     int32_t zero_offset;
     float32_t calibration_factor;
     int32_t sample;
-    struct calibration_data_v2 cal_data;
-
 #ifdef CONFIG_NAU7802_TRIGGER
     struct gpio_callback gpio_cb;
     sensor_trigger_handler_t handler_drdy;
@@ -152,7 +159,6 @@ typedef int (*nau7802_trigger_set_t)(const struct device *dev, const struct sens
 typedef int (*nau7802_attr_set_t)(const struct device *dev, enum sensor_channel chan, enum sensor_attribute attr, const struct sensor_value *val);
 typedef int (*nau7802_sample_fetch_t)(const struct device *dev, enum sensor_channel chan);
 typedef int (*nau7802_channel_get_t)(const struct device *dev, enum sensor_channel chan, struct sensor_value *val);
-typedef int (*nau7802_channel_get_raw_t)(const struct device *dev, enum sensor_channel chan, struct sensor_value *val);
 typedef int (*nau7802_setRate_runtime_t)(const struct device *dev, const struct nau7802_config *config, uint16_t conversions_per_second_idx);
 
 /* Define API structure*/
@@ -168,7 +174,6 @@ __subsystem struct nau7802_driver_api
     nau7802_attr_set_t attr_set;
     nau7802_sample_fetch_t sample_fetch;
     nau7802_channel_get_t channel_get;
-    nau7802_channel_get_raw_t channel_get_raw;
     nau7802_setRate_runtime_t setRate_runtime;
 };
 
@@ -246,18 +251,6 @@ static inline int z_impl_nau7802_channel_get(const struct device *dev, enum sens
     return api->channel_get(dev, chan, val);
 }
 
-__syscall int nau7802_channel_get_raw(const struct device *dev, enum sensor_channel chan, struct sensor_value *val);
-
-static inline int z_impl_nau7802_channel_get_raw(const struct device *dev, enum sensor_channel chan, struct sensor_value *val)
-{
-    const struct nau7802_driver_api *api = (const struct nau7802_driver_api *)dev->api;
-    if (api->channel_get_raw == NULL)
-    {
-        return -ENOSYS;
-    }
-    return api->channel_get_raw(dev, chan, val);
-}
-
 __syscall int nau7802_setRate_runtime(const struct device *dev, const struct nau7802_config *config, uint16_t conversions_per_second_idx);
 
 static inline int z_impl_nau7802_setRate_runtime(const struct device *dev, const struct nau7802_config *config, uint16_t conversions_per_second_idx)
@@ -290,7 +283,7 @@ int load_offset_nvs(int32_t *offset);
 int store_offset_nvs(int32_t offset);
 int store_gain_nvs(float gain);
 int store_calibration_data_nvs(int32_t offset, float32_t gain);
-int load_calibration_data_nvs(struct calibration_data_v2 *cal_data);
+int load_calibration_data_nvs(struct nau7802_data *cal_data);
 
 #include <zephyr/syscalls/nau7802.h>
 

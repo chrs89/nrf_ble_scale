@@ -11,7 +11,7 @@
 
 /* Declare the module to logging submodule*/
 LOG_MODULE_DECLARE(NAU7802, LOG_LEVEL_DBG);
-//  LOG_MODULE_DECLARE(NAU7802, CONFIG_I2C_LOG_LEVEL);
+//   LOG_MODULE_DECLARE(NAU7802, CONFIG_I2C_LOG_LEVEL);
 
 /**
  * nau7802_handle_interrupt - send the sensor device to user defined handler function
