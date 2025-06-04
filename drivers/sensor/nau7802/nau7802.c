@@ -24,7 +24,7 @@ LOG_MODULE_REGISTER(NAU7802, LOG_LEVEL_DBG);
     @return 0 if success
 */
 /**************************************************************************/
-static int nau7802_reset(const struct nau7802_config *config)
+static int nau7802_reset(struct nau7802_config *config)
 {
     int ret;
     /* Set the RR bit to 1 in R0x00, to guarantee a reset of all register values.*/
@@ -79,7 +79,7 @@ static int nau7802_reset(const struct nau7802_config *config)
     @return 0 if success
 */
 /**************************************************************************/
-static int nau7802_enable(const struct nau7802_config *config, bool flag)
+static int nau7802_enable(struct nau7802_config *config, bool flag)
 {
     int ret;
     /* Turn off the IC*/
@@ -160,7 +160,7 @@ static int nau7802_enable(const struct nau7802_config *config, bool flag)
     @return 0 if success
 */
 /**************************************************************************/
-static int nau7802_setLDO(const struct nau7802_config *config, NAU7802_LDOVoltage voltage)
+static int nau7802_setLDO(struct nau7802_config *config, NAU7802_LDOVoltage voltage)
 {
     int ret;
 
@@ -216,7 +216,7 @@ static int nau7802_setLDO(const struct nau7802_config *config, NAU7802_LDOVoltag
     @returns 0 if seccess
 */
 /**************************************************************************/
-static int nau7802_setGain(const struct nau7802_config *config)
+static int nau7802_setGain(struct nau7802_config *config)
 {
     int ret;
     NAU7802_Gain gain = GainMap[config->gain_idx];
@@ -244,9 +244,22 @@ static int nau7802_setGain(const struct nau7802_config *config)
     @returns 0 if seccess
 */
 /**************************************************************************/
-static int nau7802_setRate(const struct nau7802_config *config)
+static int nau7802_setRate(const struct device *dev, const struct sensor_value *sps)
 {
     int ret;
+    struct nau7802_config *config = dev->config;
+    uint16_t conversions_per_second_idx = (uint16_t)sps->val1;
+
+    /*Check if Value is within allowed SPS rate*/
+    if (!(conversions_per_second_idx == NAU7802_RATE_10SPS ||
+    conversions_per_second_idx == NAU7802_RATE_20SPS || 
+    conversions_per_second_idx == NAU7802_RATE_40SPS || 
+    conversions_per_second_idx == NAU7802_RATE_80SPS || 
+    conversions_per_second_idx == NAU7802_RATE_320SPS))
+        {
+            return -EINVAL;
+        }
+       
     NAU7802_SampleRate rate = sampleRateMap[config->conversions_per_second_idx];
     /* Write the sample rate to CTRL2 register*/
     ret = i2c_reg_update_byte_dt(&config->bus, NAU7802_CTRL2, NAU7802_MASK_CTRL2_CRS,
@@ -256,34 +269,8 @@ static int nau7802_setRate(const struct nau7802_config *config)
         LOG_ERR("ret:%d, Chip set CRS bits failed", ret);
         return ret;
     }
-    /* success*/
-    return 0;
-}
-
-/**************************************************************************/
-/*!
-    @brief  The desired conversion rate setter @Runtime
-    @param conversions_per_second_idx The index of desired rate in dts bindings:
-    NAU7802_RATE_10SPS=0,
-    NAU7802_RATE_20SPS=1,
-    NAU7802_RATE_40SPS=2,
-    NAU7802_RATE_80SPS=3,
-    NAU7802_RATE_320SPS=4
-    @returns 0 if seccess
-*/
-/**************************************************************************/
-static int setRate_runtime(const struct device *dev, const struct nau7802_config *config, uint16_t conversions_per_second_idx)
-{
-    int ret;
-    NAU7802_SampleRate rate = sampleRateMap[conversions_per_second_idx];
-    /* Write the sample rate to CTRL2 register*/
-    ret = i2c_reg_update_byte_dt(&config->bus, NAU7802_CTRL2, NAU7802_MASK_CTRL2_CRS,
-                                 (rate << NAU7802_SHIFT_CTRL2_CRS));
-    if (ret != 0)
-    {
-        LOG_ERR("ret:%d, Chip set CRS bits failed", ret);
-        return ret;
-    }
+    /*Set Value to config*/
+    config->conversions_per_second_idx = conversions_per_second_idx;
     /* success*/
     return 0;
 }
@@ -363,7 +350,7 @@ static int nau7802_setCalibrationFactor(const struct device *nau7802,
     @returns 0 if seccess
 */
 /**************************************************************************/
-static int nau7802_IntCalibration(const struct nau7802_config *config,
+static int nau7802_IntCalibration(struct nau7802_config *config,
                                   NAU7802_Calibration calibrationMode)
 {
     int ret;
@@ -433,6 +420,9 @@ static int attr_set(const struct device *dev, enum sensor_channel chan,
     case SENSOR_ATTR_Manufacturing_CALIBRATION_FACTOR:
         return nau7802_setCalibrationFactor(dev, val);
 
+    case SENSOR_ATTR_SAMPLING_FREQUENCY:
+        return nau7802_setRate(dev,val);
+
     default:
         LOG_WRN("attr_set() does not support this attribute.");
         return -ENOTSUP;
@@ -445,7 +435,7 @@ static int sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
 
     struct nau7802_data *data = dev->data;
-    const struct nau7802_config *config = dev->config;
+    struct nau7802_config *config = dev->config;
     uint8_t out[3];
 
     if (chan == SENSOR_CHAN_ALL)
@@ -525,7 +515,6 @@ static const struct nau7802_driver_api nau7802_api = {
     .attr_set = &attr_set,
     .channel_get = &channel_get,
     .sample_fetch = &sample_fetch,
-    .setRate_runtime = &setRate_runtime,
 #if CONFIG_NAU7802_TRIGGER
     .trigger_set = &trigger_set,
 
@@ -539,7 +528,7 @@ static const struct nau7802_driver_api nau7802_api = {
 /* Init function*/
 static int nau7802_init(const struct device *dev)
 {
-    const struct nau7802_config *const config = dev->config;
+    struct nau7802_config *config = dev->config;
     struct nau7802_data *data = dev->data;
     int ret;
 
@@ -590,7 +579,9 @@ static int nau7802_init(const struct device *dev)
     LOG_DBG("ret:%d, Set gain done", ret);
 
     /* Configure the output data rate*/
-    ret = nau7802_setRate(config);
+    struct sensor_value *sps;
+    sps->val1 = config->conversions_per_second_idx; 
+    ret = nau7802_setRate(dev, sps);
     if (ret != 0)
     {
         LOG_ERR("ret:%d, SetRate process failed", ret);
@@ -694,7 +685,7 @@ static int nau7802_init(const struct device *dev)
 static int custom_nau7802_pm_action(const struct device *dev,
                                     enum pm_device_action action)
 {
-    const struct nau7802_config *config = dev->config;
+    struct nau7802_config *config = dev->config;
     int ret = 0;
 
     switch (action)
@@ -707,10 +698,6 @@ static int custom_nau7802_pm_action(const struct device *dev,
         {
             LOG_DBG("PM_DEVICE_ACTION_Resuming Failed %d", ret);
         }
-        if (ret == 0)
-        {
-            LOG_DBG("PM_DEVICE_ACTION_Resuming Success");
-        }
         break;
     case PM_DEVICE_ACTION_SUSPEND:
         LOG_INF("Suspending NAU7802 sensor");
@@ -720,10 +707,6 @@ static int custom_nau7802_pm_action(const struct device *dev,
         if (ret != 0)
         {
             LOG_DBG("PM_DEVICE_ACTION_SUSPEND: Failed %d", ret);
-        }
-        if (ret == 0)
-        {
-            LOG_DBG("PM_DEVICE_ACTION_SUSPEND: Success");
         }
         break;
     default:
@@ -743,7 +726,7 @@ static int custom_nau7802_pm_action(const struct device *dev,
 /* Use the Instance-based APIs */
 #define CREATE_NAU7802_INST(inst)                                                     \
     static struct nau7802_data nau7802_data_##inst;                                   \
-    static const struct nau7802_config nau7802_config_##inst = {                      \
+    static struct nau7802_config nau7802_config_##inst = {                      \
         NAU7802_INT_CFG(inst)                                                         \
             .bus = I2C_DT_SPEC_INST_GET(inst),                                        \
         .conversions_per_second_idx = DT_INST_ENUM_IDX(inst, conversions_per_second), \

@@ -159,7 +159,6 @@ typedef int (*nau7802_trigger_set_t)(const struct device *dev, const struct sens
 typedef int (*nau7802_attr_set_t)(const struct device *dev, enum sensor_channel chan, enum sensor_attribute attr, const struct sensor_value *val);
 typedef int (*nau7802_sample_fetch_t)(const struct device *dev, enum sensor_channel chan);
 typedef int (*nau7802_channel_get_t)(const struct device *dev, enum sensor_channel chan, struct sensor_value *val);
-typedef int (*nau7802_setRate_runtime_t)(const struct device *dev, const struct nau7802_config *config, uint16_t conversions_per_second_idx);
 
 /* Define API structure*/
 __subsystem struct nau7802_driver_api
@@ -174,7 +173,6 @@ __subsystem struct nau7802_driver_api
     nau7802_attr_set_t attr_set;
     nau7802_sample_fetch_t sample_fetch;
     nau7802_channel_get_t channel_get;
-    nau7802_setRate_runtime_t setRate_runtime;
 };
 
 /* Define syscall Functions*/
@@ -249,18 +247,6 @@ static inline int z_impl_nau7802_channel_get(const struct device *dev, enum sens
         return -ENOSYS;
     }
     return api->channel_get(dev, chan, val);
-}
-
-__syscall int nau7802_setRate_runtime(const struct device *dev, const struct nau7802_config *config, uint16_t conversions_per_second_idx);
-
-static inline int z_impl_nau7802_setRate_runtime(const struct device *dev, const struct nau7802_config *config, uint16_t conversions_per_second_idx)
-{
-    const struct nau7802_driver_api *api = (const struct nau7802_driver_api *)dev->api;
-    if (api->setRate_runtime == NULL)
-    {
-        return -ENOSYS;
-    }
-    return api->setRate_runtime(dev, config, conversions_per_second_idx);
 }
 
 /*Prototypes*/
