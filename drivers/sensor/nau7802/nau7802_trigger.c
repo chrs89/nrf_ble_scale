@@ -6,6 +6,8 @@
 #include <zephyr/drivers/gpio.h>
 #include "nau7802.h"
 #include "nau7802_regmap.h"
+/*Thread Analyzer*/
+#include <zephyr/kernel/thread.h>
 
 #define DT_DRV_COMPAT nuvoton_nau7802
 
@@ -207,6 +209,7 @@ int nau7802_init_interrupt(const struct device *dev)
                     CONFIG_NAU7802_THREAD_STACK_SIZE, nau7802_thread,
                     (void *)dev, NULL, NULL,
                     K_PRIO_COOP(CONFIG_NAU7802_THREAD_PRIORITY), 0, K_NO_WAIT);
+    k_thread_name_set(&data->thread, "NAU7802_Thread");
 #elif defined(CONFIG_NAU7802_TRIGGER_GLOBAL_THREAD)
     data->work.handler = nau7802_work_cb;
 #endif /* CONFIG_NAU7802_TRIGGER_OWN_THREAD */

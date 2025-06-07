@@ -252,14 +252,14 @@ static int nau7802_setRate(const struct device *dev, const struct sensor_value *
 
     /*Check if Value is within allowed SPS rate*/
     if (!(conversions_per_second_idx == NAU7802_RATE_10SPS ||
-    conversions_per_second_idx == NAU7802_RATE_20SPS || 
-    conversions_per_second_idx == NAU7802_RATE_40SPS || 
-    conversions_per_second_idx == NAU7802_RATE_80SPS || 
-    conversions_per_second_idx == NAU7802_RATE_320SPS))
-        {
-            return -EINVAL;
-        }
-       
+          conversions_per_second_idx == NAU7802_RATE_20SPS ||
+          conversions_per_second_idx == NAU7802_RATE_40SPS ||
+          conversions_per_second_idx == NAU7802_RATE_80SPS ||
+          conversions_per_second_idx == NAU7802_RATE_320SPS))
+    {
+        return -EINVAL;
+    }
+
     NAU7802_SampleRate rate = sampleRateMap[config->conversions_per_second_idx];
     /* Write the sample rate to CTRL2 register*/
     ret = i2c_reg_update_byte_dt(&config->bus, NAU7802_CTRL2, NAU7802_MASK_CTRL2_CRS,
@@ -421,7 +421,7 @@ static int attr_set(const struct device *dev, enum sensor_channel chan,
         return nau7802_setCalibrationFactor(dev, val);
 
     case SENSOR_ATTR_SAMPLING_FREQUENCY:
-        return nau7802_setRate(dev,val);
+        return nau7802_setRate(dev, val);
 
     default:
         LOG_WRN("attr_set() does not support this attribute.");
@@ -580,7 +580,7 @@ static int nau7802_init(const struct device *dev)
 
     /* Configure the output data rate*/
     struct sensor_value *sps;
-    sps->val1 = config->conversions_per_second_idx; 
+    sps->val1 = config->conversions_per_second_idx;
     ret = nau7802_setRate(dev, sps);
     if (ret != 0)
     {
@@ -726,7 +726,7 @@ static int custom_nau7802_pm_action(const struct device *dev,
 /* Use the Instance-based APIs */
 #define CREATE_NAU7802_INST(inst)                                                     \
     static struct nau7802_data nau7802_data_##inst;                                   \
-    static struct nau7802_config nau7802_config_##inst = {                      \
+    static struct nau7802_config nau7802_config_##inst = {                            \
         NAU7802_INT_CFG(inst)                                                         \
             .bus = I2C_DT_SPEC_INST_GET(inst),                                        \
         .conversions_per_second_idx = DT_INST_ENUM_IDX(inst, conversions_per_second), \

@@ -9,8 +9,10 @@ project(nau7802-test-delete-me)
 # Add your source files here
 target_sources(app PRIVATE
     src/main.c            # Main application file
-    src/shell_commands.c  # Add shell command source file here
+    src/shell_commands.c  # Add shell command file
+    src/myble_lbs.c  # Add ble file
 )
 
 # Include directories for header files
 target_include_directories(app PRIVATE src)  # Add 'src' directory or the appropriate path
+zephyr_library_include_directories(.)

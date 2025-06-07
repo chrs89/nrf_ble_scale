@@ -15,6 +15,7 @@
         "device.h": "c",
         "shell.h": "c",
         "shell_commands.h": "c",
-        "stats.h": "c"
+        "stats.h": "c",
+        "myble_lbs.h": "c"
     }
 }
