@@ -248,7 +248,15 @@ static int nau7802_setRate(const struct device *dev, const struct sensor_value *
 {
     int ret;
     struct nau7802_config *config = dev->config;
+    struct nau7802_data *data = dev->data;
     uint16_t conversions_per_second_idx = (uint16_t)sps->val1;
+
+    // /*check if Thread is running: set_rate prohibited if thread running*/
+    // if (data->threadState == THREAD_RUNNING)
+    // {
+    //     LOG_ERR("Sensor THREAD_RUNNING: Change of SPS prohibited");
+    //     return ENOTSUP;
+    // }
 
     /*Check if Value is within allowed SPS rate*/
     if (!(conversions_per_second_idx == NAU7802_RATE_10SPS ||
@@ -260,7 +268,7 @@ static int nau7802_setRate(const struct device *dev, const struct sensor_value *
         return -EINVAL;
     }
 
-    NAU7802_SampleRate rate = sampleRateMap[config->conversions_per_second_idx];
+    NAU7802_SampleRate rate = conversions_per_second_idx;
     /* Write the sample rate to CTRL2 register*/
     ret = i2c_reg_update_byte_dt(&config->bus, NAU7802_CTRL2, NAU7802_MASK_CTRL2_CRS,
                                  (rate << NAU7802_SHIFT_CTRL2_CRS));
@@ -475,7 +483,7 @@ static int channel_get(const struct device *dev, enum sensor_channel chan,
     struct nau7802_data *data = dev->data;
     float uval;
 
-    if ((enum sensor_channel_nuvoton_nau7802)chan != SENSOR_CHAN_FORCE)
+    if ((enum sensor_channel_nuvoton_nau7802)chan != SENSOR_CHAN_FORCE && (enum sensor_channel_nuvoton_nau7802)chan != SENSOR_CHAN_RAW)
     {
         return -ENOTSUP;
     }
@@ -579,9 +587,9 @@ static int nau7802_init(const struct device *dev)
     LOG_DBG("ret:%d, Set gain done", ret);
 
     /* Configure the output data rate*/
-    struct sensor_value *sps;
-    sps->val1 = config->conversions_per_second_idx;
-    ret = nau7802_setRate(dev, sps);
+    struct sensor_value sps;
+    sps.val1 = sampleRateMap[config->conversions_per_second_idx];
+    ret = nau7802_setRate(dev, &sps);
     if (ret != 0)
     {
         LOG_ERR("ret:%d, SetRate process failed", ret);
@@ -678,6 +686,8 @@ static int nau7802_init(const struct device *dev)
 
     /* success*/
     LOG_DBG("Chip init done.");
+
+    // data->threadState = THREAD_SUSPENDED;
 
     return 0;
 }

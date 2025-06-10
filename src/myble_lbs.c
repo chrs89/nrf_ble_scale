@@ -22,13 +22,14 @@
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/sys_clock.h>
 
 #include "myble_lbs.h"
 
 LOG_MODULE_DECLARE(NAU7802, LOG_LEVEL_DBG);
 
 // Global variable to store the period time (time between calls)
-uint32_t prev_time = 0;
+static uint32_t prev_time_us = 0; // Store time in microseconds
 
 static bool notify_mysensor_enabled;
 static bool indicate_enabled;
@@ -48,6 +49,7 @@ static void mylbsbc_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t va
 static void mylbsbc_ccc_mysensor_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 {
 	notify_mysensor_enabled = (value == BT_GATT_CCC_NOTIFY);
+	LOG_INF("MYSENSOR CCCD changed: %d", value); // <--- ADD THIS
 }
 
 // This function is called when a remote device has acknowledged the indication at its host layer
@@ -55,6 +57,7 @@ static void indicate_cb(struct bt_conn *conn, struct bt_gatt_indicate_params *pa
 {
 	LOG_DBG("Indication %s\n", err != 0U ? "fail" : "success");
 }
+
 static ssize_t write_led(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf,
 						 uint16_t len, uint16_t offset, uint8_t flags)
 {
@@ -81,6 +84,43 @@ static ssize_t write_led(struct bt_conn *conn, const struct bt_gatt_attr *attr, 
 		{
 			// Call the application callback function to update the LED state
 			lbs_cb.led_cb(val ? true : false);
+		}
+		else
+		{
+			LOG_DBG("Write led: Incorrect value");
+			return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
+		}
+	}
+
+	return len;
+}
+
+static ssize_t write_aindx(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf,
+						   uint16_t len, uint16_t offset, uint8_t flags)
+{
+	LOG_DBG("Attribute write, handle: %u, conn: %p", attr->handle, (void *)conn);
+
+	if (len != 1U)
+	{
+		LOG_DBG("Write led: Incorrect data length");
+		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
+	}
+
+	if (offset != 0)
+	{
+		LOG_DBG("Write led: Incorrect data offset");
+		return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
+	}
+
+	if (lbs_cb.aindx_cb)
+	{
+		// Read the received value
+		uint8_t val = *((uint8_t *)buf);
+
+		if (val == 0x00 || val == 0x01)
+		{
+			// Call the application callback function to update the LED state
+			lbs_cb.aindx_cb(val ? true : false);
 		}
 		else
 		{
@@ -121,11 +161,15 @@ BT_GATT_SERVICE_DEFINE(
 
 	BT_GATT_CHARACTERISTIC(BT_UUID_LBS_LED, BT_GATT_CHRC_WRITE, BT_GATT_PERM_WRITE, NULL,
 						   write_led, NULL),
+
 	/* STEP 12 - Create and add the MYSENSOR characteristic and its CCCD  */
 	BT_GATT_CHARACTERISTIC(BT_UUID_LBS_MYSENSOR, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE, NULL,
 						   NULL, NULL),
 
 	BT_GATT_CCC(mylbsbc_ccc_mysensor_cfg_changed, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
+
+	BT_GATT_CHARACTERISTIC(BT_UUID_LBS_AINDX, BT_GATT_CHRC_WRITE, BT_GATT_PERM_WRITE, NULL,
+						   write_aindx, NULL),
 
 );
 /* A function to register application callbacks for the LED and Button characteristics  */
@@ -135,7 +179,10 @@ int my_lbs_init(struct my_lbs_cb *callbacks)
 	{
 		lbs_cb.led_cb = callbacks->led_cb;
 		lbs_cb.button_cb = callbacks->button_cb;
+		lbs_cb.aindx_cb = callbacks->aindx_cb;
 	}
+
+	print_gatt_attributes();
 
 	return 0;
 }
@@ -165,25 +212,22 @@ static inline uint32_t to_little_endian(uint32_t val)
 int my_lbs_send_sensor_notify(struct sensor_value force_val)
 {
 
-	// Start the timer (milliseconds or ticks)
-	uint32_t current_time = k_uptime_get_32(); // Get the current time (in ms)
+	// Get the current time in microseconds
+	uint32_t current_time_us = k_cyc_to_us_floor32(k_cycle_get_32());
 
-	if (prev_time == 0)
+	if (prev_time_us == 0)
 	{
-		// If this is the first call, initialize prev_time with current_time
-		prev_time = current_time;
+		// First call
+		prev_time_us = current_time_us;
 		LOG_INF("First call, no period time to calculate.");
-		return 0; // Exit early on the first call, no period time to calculate
+		return 0;
 	}
 
-	// Calculate the time difference between the current call and the previous call
-	uint32_t period_time = current_time - prev_time;
+	// Time difference in microseconds
+	uint32_t period_time_us = current_time_us - prev_time_us;
+	// LOG_INF("Period time (time between calls): %d µs", period_time_us);
 
-	// Log the period time (time between successive calls)
-	LOG_INF("Period time (time between calls): %d ms", period_time);
-
-	// Now set the previous time to the current time for the next call
-	prev_time = current_time;
+	prev_time_us = current_time_us;
 
 	uint8_t buffer[8];
 	int err;
@@ -219,4 +263,26 @@ int my_lbs_send_sensor_notify(struct sensor_value force_val)
 	}
 
 	return 0;
+}
+
+void print_gatt_attributes(void)
+{
+	LOG_INF("Dumping attributes for my_lbs_svc:");
+
+	for (size_t i = 0; i < my_lbs_svc.attr_count; i++)
+	{
+		const struct bt_gatt_attr *attr = &my_lbs_svc.attrs[i];
+		const struct bt_uuid *uuid = attr->uuid;
+
+		if (!uuid)
+		{
+			LOG_INF("[%d] NULL UUID", i);
+			continue;
+		}
+
+		char uuid_str[BT_UUID_STR_LEN];
+		bt_uuid_to_str(uuid, uuid_str, sizeof(uuid_str));
+
+		LOG_INF("[%d] UUID: %s, handle: %d, perm: 0x%02X", i, uuid_str, attr->handle, attr->perm);
+	}
 }

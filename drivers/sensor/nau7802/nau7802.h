@@ -100,8 +100,10 @@ struct calibDataManuf
 /* Define a channel for force reading*/
 enum sensor_channel_nuvoton_nau7802
 {
-    /* Force reading in Newton*/
+    /* Force reading output in Newtons */
     SENSOR_CHAN_FORCE = SENSOR_CHAN_PRIV_START,
+
+    /* Raw ADC reading */
     SENSOR_CHAN_RAW = SENSOR_CHAN_PRIV_START + 1,
 };
 

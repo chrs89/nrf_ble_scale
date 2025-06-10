@@ -137,9 +137,16 @@ static bool app_button_cb(void)
         return app_button_state;
 }
 
+static void app_aindx_cb(bool aindx_state)
+{
+        /*CB_Function for App_Management Triggered from Mobile APP*/
+        LOG_INF("A_INDX_Call_Back_Function");
+}
+
 static struct my_lbs_cb app_callbacks = {
     .led_cb = app_led_cb,
     .button_cb = app_button_cb,
+    .aindx_cb = app_aindx_cb,
 };
 
 static void button_changed(uint32_t button_state, uint32_t has_changed)
@@ -193,27 +200,6 @@ static int init_button(void)
 
 /*Init Sensor Devices*/
 const struct device *const nau7802 = DEVICE_DT_GET_ONE(nuvoton_nau7802);
-
-// Store the previous timestamp (in milliseconds)
-static uint32_t prev_timestamp = 0;
-
-// Function to set the sample rate
-static int main_set_sample_rate(const struct device *dev, uint16_t rate_idx)
-{
-        const struct nau7802_config *config = dev->config;
-        int ret;
-
-        // Change the conversion rate by using the index to get the correct sample rate
-        ret = nau7802_setRate_runtime(dev, config, sampleRateMap[rate_idx]);
-        if (ret != 0)
-        {
-                LOG_ERR("Failed to set the sample rate");
-                return ret;
-        }
-
-        LOG_INF("Sample rate set to %d SPS", sampleRateMap[rate_idx]);
-        return 0;
-}
 
 // Callback function to handle the interrupt when new data is ready
 void sensor_data_ready_callback(const struct device *dev, const struct sensor_trigger *trig)
@@ -294,7 +280,7 @@ int get_offset_data(const struct device *dev)
         }
 
         // Calculate the average
-        data->zero_offset = -(sum / 50); // Average the offset (sensor value)
+        data->zero_offset = (sum / 50); // Average the offset (sensor value)
         LOG_INF("Calculated offset: %d", data->zero_offset);
 
         return 0;
@@ -484,6 +470,7 @@ int main(void)
         /* Init Shell Functions */
         SHELL_CMD_REGISTER(get_offset, NULL, "Fetch 50 sensor samples, average, and create calibration data", cmd_get_offset);
         SHELL_CMD_REGISTER(get_calFactor, NULL, "Fetch 50 sensor samples, average, and create calibration data", cmd_get_calFactor);
+        SHELL_CMD_REGISTER(set_calNVS, NULL, "save Cal.data to NVS", cmd_setCal_nvs);
         SHELL_CMD_REGISTER(nau_suspend, NULL, "Suspend NAU7802 Thread", cmd_suspend_nau7802Thread);
         SHELL_CMD_REGISTER(nau_resume, NULL, "Resume NAU7802 Thread", cmd_resume_nau7802Thread);
         SHELL_CMD_REGISTER(nau_set_rate, NULL, "nau set 320sps", cmd_nau_set_sps);

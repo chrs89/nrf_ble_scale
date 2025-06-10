@@ -16,6 +16,9 @@
         "shell.h": "c",
         "shell_commands.h": "c",
         "stats.h": "c",
-        "myble_lbs.h": "c"
+        "myble_lbs.h": "c",
+        "dk_buttons_and_leds.h": "c",
+        "gap.h": "c",
+        "calibration.h": "c"
     }
 }

@@ -34,11 +34,15 @@ extern "C" {
 #define BT_UUID_LBS_MYSENSOR_VAL                                                                   \
 	BT_UUID_128_ENCODE(0x00001526, 0x1212, 0xefde, 0x1523, 0x785feabcd123)
 
+/** @brief App_INDX Characteristic UUID. */
+#define BT_UUID_LBS_AINDX_VAL BT_UUID_128_ENCODE(0x00001528, 0x1212, 0xefde, 0x1523, 0x785feabcd123)
+
 #define BT_UUID_LBS BT_UUID_DECLARE_128(BT_UUID_LBS_VAL)
 #define BT_UUID_LBS_BUTTON BT_UUID_DECLARE_128(BT_UUID_LBS_BUTTON_VAL)
 #define BT_UUID_LBS_LED BT_UUID_DECLARE_128(BT_UUID_LBS_LED_VAL)
 /* STEP 11.2 - Convert the array to a generic UUID */
 #define BT_UUID_LBS_MYSENSOR BT_UUID_DECLARE_128(BT_UUID_LBS_MYSENSOR_VAL)
+#define BT_UUID_LBS_AINDX BT_UUID_DECLARE_128(BT_UUID_LBS_AINDX_VAL)
 
 /*BLE Send Data Format*/
 #define USE_LITTLE_ENDIAN 1
@@ -50,12 +54,17 @@ typedef void (*led_cb_t)(const bool led_state);
 /** @brief Callback type for when the button state is pulled. */
 typedef bool (*button_cb_t)(void);
 
+/** @brief Callback type for when an APP Index state change is received. */
+typedef void (*aindx_cb_t)(const bool aindx_state);
+
 /** @brief Callback struct used by the LBS Service. */
 struct my_lbs_cb {
 	/** LED state change callback. */
 	led_cb_t led_cb;
 	/** Button read callback. */
 	button_cb_t button_cb;
+	/** Button read callback. */
+	aindx_cb_t aindx_cb;
 };
 
 /** @brief Initialize the LBS Service.
