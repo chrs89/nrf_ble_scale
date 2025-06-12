@@ -10,7 +10,7 @@
 	pinctrl-1 = <&i2c1_sleep>;
 	pinctrl-names = "default", "sleep";
 	/*enable device runtime pm for i2c */
-	//zephyr,pm-device-runtime-auto;
+	zephyr,pm-device-runtime-auto;
 
 
 	nau7802: nau7802@2a {
@@ -21,7 +21,7 @@
 		gain = <128>;
 
 		/*enable device runtime pm for bme sensor */
-		//zephyr,pm-device-runtime-auto;
+		zephyr,pm-device-runtime-auto;
 
 		/* Default power-up the device on boot */
 		status = "okay";  // Ensures the device is active (not disabled)
