@@ -19,6 +19,7 @@
         "myble_lbs.h": "c",
         "dk_buttons_and_leds.h": "c",
         "gap.h": "c",
-        "calibration.h": "c"
+        "calibration.h": "c",
+        "ble_service.h": "c"
     }
 }

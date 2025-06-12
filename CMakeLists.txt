@@ -9,11 +9,14 @@ project(nau7802-test-delete-me)
 # Add your source files here
 target_sources(app PRIVATE
     src/main.c            # Main application file
-    src/shell_commands.c  # Add shell command source file here
-
-    #BLE 
-    src/myble_lbs.c
+    src/shell/shell_commands.c  # Add shell command source file here
+    src/calibration/calibration.c
+    src/ble/ble_service.c
+    src/ble/myble_lbs.c
 )
 
 # Include directories for header files
-target_include_directories(app PRIVATE src)  # Add 'src' directory or the appropriate path
+target_include_directories(app PRIVATE
+    src
+    drivers     
+)
