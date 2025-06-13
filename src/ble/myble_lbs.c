@@ -182,7 +182,7 @@ int my_lbs_init(struct my_lbs_cb *callbacks)
 		lbs_cb.aindx_cb = callbacks->aindx_cb;
 	}
 
-	print_gatt_attributes();
+	// print_gatt_attributes();
 
 	return 0;
 }

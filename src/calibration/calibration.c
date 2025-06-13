@@ -1,8 +1,8 @@
 #include "calibration.h"
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include "sensor/nau7802/nau7802.h" // Adjust path if different
-                                                  // If your NVS store function is elsewhere
+#include "sensor/nau7802/nau7802.h"
+#include "../nvs/nvs.h"
 
 LOG_MODULE_REGISTER(CALIBRATION, LOG_LEVEL_DBG);
 
@@ -41,8 +41,11 @@ int get_offset_data(const struct device *dev)
 
         k_sleep(K_MSEC(10));
     }
-
-    data->zero_offset = sum / 50;
+    struct sensor_value offset;
+    offset.val1 = sum / 50;
+    const struct sensor_value *ptr = &offset;
+    nau7802_attr_set(dev, SENSOR_CHAN_ALL, SENSOR_ATTR_OFFSET, ptr);
+    // data->zero_offset = sum / 50;
     LOG_INF("Offset calculated: %d", data->zero_offset);
 
     return 0;
@@ -82,7 +85,13 @@ int get_calFactor_data(const struct device *dev, float32_t cal_weight)
         k_sleep(K_MSEC(10));
     }
 
-    data->calibration_factor = (sum / 50 - data->zero_offset) / cal_weight;
+    struct sensor_value calFactor;
+    float32_t calFactor_f = (sum / 50 - data->zero_offset) / cal_weight;
+    sensor_value_from_float(&calFactor, calFactor_f);
+    const struct sensor_value *ptr = &calFactor;
+    nau7802_attr_set(dev, SENSOR_CHAN_ALL, SENSOR_ATTR_OFFSET, ptr);
+
+    // data->calibration_factor = (sum / 50 - data->zero_offset) / cal_weight;
     LOG_INF("Calibration factor: %f (for weight: %f)", data->calibration_factor, cal_weight);
 
     return 0;

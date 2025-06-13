@@ -289,7 +289,7 @@ static int nau7802_setRate(const struct device *dev, const struct sensor_value *
     @param offset Should be a float value to add on the calibrated sensor
     reading. It's expressed as int32.
     Use memcpy to extract the data from offset->val1
-    @returns 0 if seccess
+    @returns 0 if success
 */
 /**************************************************************************/
 // static int nau7802_setOffset(const struct device *nau7802, const struct sensor_value *offset)
@@ -321,6 +321,17 @@ static int nau7802_setOffset(const struct device *nau7802, const struct sensor_v
     /* success*/
     return 0;
 }
+
+/**************************************************************************/
+/*!
+    @brief  Tara offset setter
+    @param offset_t is int32_t
+    The function adds up Tara_Offset to the already set data.zero_offset
+    (e.g. manufacture Calibration Data set loaded from NVS)
+    Use memcpy to extract the data from offset->val1
+    @returns 0 if success
+*/
+/**************************************************************************/
 
 /**************************************************************************/
 /*!
@@ -637,25 +648,25 @@ static int nau7802_init(const struct device *dev)
         return ret;
     }
 
-    /* Initialize NVS & Load Calibration Factos*/
-    ret = nau7802_nvs_init();
-    if (ret != 0)
-    {
-        LOG_ERR("ret:%d, NVS init process fail", ret);
-        return ret;
-    }
+    // /* Initialize NVS & Load Calibration Factos*/
+    // ret = nau7802_nvs_init();
+    // if (ret != 0)
+    // {
+    //     LOG_ERR("ret:%d, NVS init process fail", ret);
+    //     return ret;
+    // }
 
-    /*Set Calibration Data from NVS --> nau7802 device*/
-    ret = load_calibration_data_nvs(data);
-    if (ret != 0)
-    {
-        LOG_ERR("Failed to load calibration data.");
-    }
-    else
-    {
-        LOG_INF("Loaded Calibration Data: Zero_Offset = %d, Calibration_Factor = %f", data->zero_offset, data->calibration_factor);
-    }
-    LOG_INF("Loaded Calibration Data: Zero_Offset = %d, Calibration_Factor = %f", data->zero_offset, data->calibration_factor);
+    // /*Set Calibration Data from NVS --> nau7802 device*/
+    // ret = load_calibration_data_nvs(data);
+    // if (ret != 0)
+    // {
+    //     LOG_ERR("Failed to load calibration data.");
+    // }
+    // else
+    // {
+    //     LOG_INF("Loaded Calibration Data: Zero_Offset = %d, Calibration_Factor = %f", data->zero_offset, data->calibration_factor);
+    // }
+    // LOG_INF("Loaded Calibration Data: Zero_Offset = %d, Calibration_Factor = %f", data->zero_offset, data->calibration_factor);
 
     // /* Load Calib. Data*/
     // struct nau7802_data test_data;

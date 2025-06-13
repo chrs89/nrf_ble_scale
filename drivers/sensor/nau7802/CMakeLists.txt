@@ -5,4 +5,4 @@ zephyr_library()
 zephyr_syscall_header(nau7802.h)
 zephyr_library_sources(nau7802.c)
 zephyr_library_sources_ifdef(CONFIG_NAU7802_TRIGGER nau7802_trigger.c)
-zephyr_library_sources(nau7802_nvs.c)
+

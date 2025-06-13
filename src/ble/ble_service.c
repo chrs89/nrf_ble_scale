@@ -3,7 +3,7 @@
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/conn.h>
 #include <dk_buttons_and_leds.h>
-#include <myble_lbs.h>
+#include "myble_lbs.h"
 #include <zephyr/logging/log.h>
 
 #include "ble_service.h"

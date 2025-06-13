@@ -94,7 +94,7 @@ struct calibDataManuf
 {
     int32_t zero_offset;
     float32_t calibration_factor;
-    // uint32_t checksum; // Store checksum for integrity checking option
+    uint32_t magic;
 };
 
 /* Define a channel for force reading*/
@@ -113,6 +113,7 @@ enum sensor_attr_nuvoton_nau7802
     /* Force reading in Newton*/
     SENSOR_ATTR_Manufacturing_CALIBRATION_FACTOR = SENSOR_ATTR_PRIV_START,
     SENSOR_ATTR_Manufacturing_ZERO_OFFSET = SENSOR_ATTR_PRIV_START + 1,
+    SENSOR_ATTR_TARA = SENSOR_ATTR_PRIV_START + 2,
 };
 
 /* Define data (RAM) and configuration (ROM) structures: */
@@ -263,15 +264,6 @@ int nau7802_init_interrupt(const struct device *dev);
 int ownThread_resume(const struct device *dev);
 int ownThread_suspend(const struct device *dev);
 #endif
-
-/*Calibration Specific Data*/
-int nau7802_nvs_init(void);
-int load_gain_nvs(float32_t *gain);
-int load_offset_nvs(int32_t *offset);
-int store_offset_nvs(int32_t offset);
-int store_gain_nvs(float gain);
-int store_calibration_data_nvs(int32_t offset, float32_t gain);
-int load_calibration_data_nvs(struct nau7802_data *cal_data);
 
 #include <zephyr/syscalls/nau7802.h>
 

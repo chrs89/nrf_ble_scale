@@ -2,11 +2,11 @@
 #include <zephyr/drivers/flash.h>
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/fs/nvs.h>
-#include "nau7802.h"
-#include "nau7802_regmap.h"
+#include <zephyr/logging/log.h>
+#include "nvs.h"
 
 /* Declare the module to logging submodule*/
-LOG_MODULE_DECLARE(NAU7802, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(NVS, LOG_LEVEL_DBG);
 
 #define NVS_PARTITION storage_partition
 #define NVS_PARTITION_DEVICE FIXED_PARTITION_DEVICE(NVS_PARTITION)
@@ -17,6 +17,8 @@ static struct nvs_fs fs;
 #define GAIN_ID 1
 #define OFFSET_ID 2
 #define FACTOR 1000 // Factor for scaling float values into integers2
+
+#define CALIB_MAGIC 0xCAFEBABE
 
 int nau7802_nvs_init(void)
 {
@@ -59,7 +61,7 @@ int store_calibration_data_nvs(int32_t offset, float32_t calibration_factor)
     const struct calibDataManuf cal_data = {
         .zero_offset = offset,                    // Set offset value
         .calibration_factor = calibration_factor, // Set gain value, scaled by FACTOR
-
+        .magic = CALIB_MAGIC,                     // Check Value
     };
 
     int ret = nvs_write(&fs, CALIBRATION_ID, (const void *)(&cal_data), sizeof(cal_data));
@@ -73,27 +75,31 @@ int store_calibration_data_nvs(int32_t offset, float32_t calibration_factor)
 }
 
 // Load calibration data
-int load_calibration_data_nvs(struct nau7802_data *data)
+int load_calibration_data_nvs(struct calibDataManuf *cal_dataRead)
 {
 
     LOG_INF("Function Call load_calibration_data_nvs");
 
-    const struct calibDataManuf cal_dataRead;
-    int ret = 0;
+    int ret = nvs_read(&fs, CALIBRATION_ID, cal_dataRead, sizeof(struct calibDataManuf));
+    if (ret < 0)
+    {
+        LOG_ERR("Failed to read calibration data from NVS, error code: %d", ret);
+        // return ret;
+    }
 
-    ret = nvs_read(&fs, CALIBRATION_ID, (void *)&cal_dataRead, sizeof(cal_dataRead));
-    // if (ret != 0)
-    // {
-    //     LOG_ERR("Failed to read calibration data from NVS, error code: %d", ret);
-    //     return ret;
-    // }
+    if (ret != sizeof(struct calibDataManuf))
+    {
+        LOG_WRN("Unexpected NVS size: got %d, expected %d", ret, sizeof(struct calibDataManuf));
+        // return -EINVAL;
+    }
 
-    memcpy(&data->zero_offset, (const void *)&cal_dataRead.zero_offset, sizeof(int32_t));
-    memcpy(&data->calibration_factor, (const void *)&cal_dataRead.calibration_factor, sizeof(float32_t));
+    if (cal_dataRead->magic != CALIB_MAGIC)
+    {
+        LOG_WRN("Invalid calibration magic: 0x%X", cal_dataRead->magic);
+        return -EINVAL;
+    }
 
-    // Log the offset and the recalculated gain
-    LOG_INF("Calibration data successfully loaded from NVS: Offset = %d, Gain = %d",
-            data->zero_offset, data->calibration_factor);
-
+    LOG_INF("Calibration loaded: Offset = %d, Factor = %f",
+            cal_dataRead->zero_offset, cal_dataRead->calibration_factor);
     return 0;
 }
