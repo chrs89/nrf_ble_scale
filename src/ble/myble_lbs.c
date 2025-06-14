@@ -117,16 +117,18 @@ static ssize_t write_aindx(struct bt_conn *conn, const struct bt_gatt_attr *attr
 		// Read the received value
 		const uint8_t val = *((uint8_t *)buf);
 
-		if (val == 0x00 || val == 0x01)
-		{
-			// Call the application callback function to update the LED state
-			lbs_cb.aindx_cb(val);
-		}
-		else
-		{
-			LOG_DBG("Write led: Incorrect value");
-			return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
-		}
+		lbs_cb.aindx_cb(val);
+
+		// if (val == 0x00 || val == 0x01)
+		// {
+		// 	// Call the application callback function to update the LED state
+		// 	lbs_cb.aindx_cb(val);
+		// }
+		// else
+		// {
+		// 	LOG_DBG("Write led: Incorrect value");
+		// 	return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
+		// }
 	}
 
 	return len;

@@ -3,7 +3,7 @@
 #include <zephyr/shell/shell.h>
 #include "shell_commands.h"
 #include "sensor/nau7802/nau7802.h"
-#include "../calibration/calibration.h"
+#include "../sensor/calibration.h"
 
 LOG_MODULE_REGISTER(shell_commands, LOG_LEVEL_DBG);
 

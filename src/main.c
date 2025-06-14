@@ -12,6 +12,7 @@
 #include "ble/ble_service.h"
 #include "ble/myble_lbs.h"
 #include "sensor/appcall_nau7802.h"
+#include "app_nau7802_cmd.h"
 
 LOG_MODULE_REGISTER(MAIN_APPLICATION, LOG_LEVEL_DBG);
 
@@ -49,9 +50,22 @@ static bool app_button_cb(void)
     return app_button_state;
 }
 
-static void app_aindx_cb(const uint8_t aindx)
+static void app_aindx_cb(const uint8_t val)
 {
-    LOG_INF("A_INDX_Call_Back_Function value: %d", aindx);
+    LOG_INF("A_INDX_Call_Back_Function value: %d", val);
+    if (val < NAU7802_CMD_COUNT)
+    {
+        // Value is a valid command enum
+        int err = nau7802_execute_command((enum app_nau7802_command)val);
+        if (err)
+        {
+            LOG_ERR("nau7802_execute_command (err: %d)", err);
+        }
+    }
+    else
+    {
+        LOG_WRN("Invalid BLE command: %d", val);
+    }
 }
 
 static struct my_lbs_cb app_callbacks = {

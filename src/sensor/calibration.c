@@ -1,8 +1,8 @@
-#include "calibration.h"
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include "sensor/nau7802/nau7802.h"
 #include "../nvs/nvs.h"
+#include "calibration.h"
 
 LOG_MODULE_REGISTER(CALIBRATION, LOG_LEVEL_DBG);
 

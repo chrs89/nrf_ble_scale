@@ -10,11 +10,11 @@ project(nau7802-test-delete-me)
 target_sources(app PRIVATE
     src/main.c            # Main application file
     src/shell/shell_commands.c  # Add shell command source file here
-    src/calibration/calibration.c
     src/ble/ble_service.c
     src/ble/myble_lbs.c
     src/nvs/nvs.c
     src/sensor/appcall_nau7802.c
+    src/sensor/calibration.c
 )
 
 # Include directories for header files

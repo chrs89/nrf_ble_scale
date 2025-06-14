@@ -436,6 +436,9 @@ static int attr_set(const struct device *dev, enum sensor_channel chan,
     case SENSOR_ATTR_OFFSET:
         return nau7802_setOffset(dev, val);
 
+    case SENSOR_ATTR_TARA:
+        return nau7802_setOffset(dev, val);
+
     case SENSOR_ATTR_Manufacturing_CALIBRATION_FACTOR:
         return nau7802_setCalibrationFactor(dev, val);
 

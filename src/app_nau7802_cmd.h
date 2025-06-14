@@ -1,0 +1,20 @@
+// app_nau7802_cmd.h
+#ifndef APP_NAU7802_CMD_H
+#define APP_NAU7802_CMD_H
+
+enum app_nau7802_command
+{
+    NAU7802_RESUME_THREAD = 0,
+    NAU7802_SUSPEND_THREAD,
+    NAU7802_SET_10SPS,
+    NAU7802_SET_20SPS,
+    NAU7802_SET_40SPS,
+    NAU7802_SET_80SPS,
+    NAU7802_SET_320SPS,
+    NAU7802_TARA,
+    NAU7802_GET_OFFSET,
+    NAU7802_GET_CALIBRATIONF_5KG,
+    NAU7802_CMD_COUNT, // Always last: size of the command list
+};
+
+#endif // APP_NAU7802_CMD_H

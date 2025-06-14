@@ -20,6 +20,7 @@
         "dk_buttons_and_leds.h": "c",
         "gap.h": "c",
         "calibration.h": "c",
-        "ble_service.h": "c"
+        "ble_service.h": "c",
+        "app_nau7802_cmd.h": "c"
     }
 }
