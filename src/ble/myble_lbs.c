@@ -102,25 +102,25 @@ static ssize_t write_aindx(struct bt_conn *conn, const struct bt_gatt_attr *attr
 
 	if (len != 1U)
 	{
-		LOG_DBG("Write led: Incorrect data length");
+		LOG_DBG("write_aindx: Incorrect data length");
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
 	}
 
 	if (offset != 0)
 	{
-		LOG_DBG("Write led: Incorrect data offset");
+		LOG_DBG("write_aindx: Incorrect data offset");
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
 	}
 
 	if (lbs_cb.aindx_cb)
 	{
 		// Read the received value
-		uint8_t val = *((uint8_t *)buf);
+		const uint8_t val = *((uint8_t *)buf);
 
 		if (val == 0x00 || val == 0x01)
 		{
 			// Call the application callback function to update the LED state
-			lbs_cb.aindx_cb(val ? true : false);
+			lbs_cb.aindx_cb(val);
 		}
 		else
 		{

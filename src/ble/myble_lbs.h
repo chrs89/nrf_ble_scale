@@ -55,7 +55,7 @@ typedef void (*led_cb_t)(const bool led_state);
 typedef bool (*button_cb_t)(void);
 
 /** @brief Callback type for when an APP Index state change is received. */
-typedef void (*aindx_cb_t)(const bool aindx_state);
+typedef void (*aindx_cb_t)(const uint8_t val);
 
 /** @brief Callback struct used by the LBS Service. */
 struct my_lbs_cb {

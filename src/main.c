@@ -49,9 +49,9 @@ static bool app_button_cb(void)
     return app_button_state;
 }
 
-static void app_aindx_cb(bool aindx_state)
+static void app_aindx_cb(const uint8_t aindx)
 {
-    LOG_INF("A_INDX_Call_Back_Function");
+    LOG_INF("A_INDX_Call_Back_Function value: %d", aindx);
 }
 
 static struct my_lbs_cb app_callbacks = {
