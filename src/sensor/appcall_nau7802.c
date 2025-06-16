@@ -1,12 +1,15 @@
 #include "appcall_nau7802.h"
 #include <zephyr/logging/log.h>
+#ifdef CONFIG_APP_ENABLE_NVSRW
 #include "../nvs/nvs.h"
+#endif
 #include "calibration.h"
 
 LOG_MODULE_REGISTER(NAU7802_Application, LOG_LEVEL_DBG);
 
 extern const struct device *const nau7802; // May not be needed if passed as argument
 
+#ifdef CONFIG_APP_ENABLE_NVSRW
 int load_calib_fromNVS(const struct device *dev)
 {
     if (!device_is_ready(nau7802))
@@ -61,6 +64,7 @@ int load_calib_fromNVS(const struct device *dev)
 
     return 0;
 }
+#endif
 
 // === Individual Command Handlers for Requests of <lbs_cb.aindx_cb> ===
 
@@ -79,35 +83,35 @@ static void handle_suspend_thread(void)
 static void handle_set_10sps(void)
 {
     LOG_INF("Set 10 SPS");
-    struct sensor_value rate = {.val1 = sampleRateMap[NAU7802_RATE_10SPS], .val2 = 0};
+    struct sensor_value rate = {.val1 = NAU7802_RATE_10SPS, .val2 = 0};
     nau7802_attr_set(nau7802, SENSOR_CHAN_ALL, SENSOR_ATTR_SAMPLING_FREQUENCY, &rate);
 }
 
 static void handle_set_20sps(void)
 {
     LOG_INF("Set 20 SPS");
-    struct sensor_value rate = {.val1 = sampleRateMap[NAU7802_RATE_20SPS], .val2 = 0};
+    struct sensor_value rate = {.val1 = NAU7802_RATE_20SPS, .val2 = 0};
     nau7802_attr_set(nau7802, SENSOR_CHAN_ALL, SENSOR_ATTR_SAMPLING_FREQUENCY, &rate);
 }
 
 static void handle_set_40sps(void)
 {
     LOG_INF("Set 40 SPS");
-    struct sensor_value rate = {.val1 = sampleRateMap[NAU7802_RATE_40SPS], .val2 = 0};
+    struct sensor_value rate = {.val1 = NAU7802_RATE_40SPS, .val2 = 0};
     nau7802_attr_set(nau7802, SENSOR_CHAN_ALL, SENSOR_ATTR_SAMPLING_FREQUENCY, &rate);
 }
 
 static void handle_set_80sps(void)
 {
     LOG_INF("Set 80 SPS");
-    struct sensor_value rate = {.val1 = sampleRateMap[NAU7802_RATE_80SPS], .val2 = 0};
+    struct sensor_value rate = {.val1 = NAU7802_RATE_80SPS, .val2 = 0};
     nau7802_attr_set(nau7802, SENSOR_CHAN_ALL, SENSOR_ATTR_SAMPLING_FREQUENCY, &rate);
 }
 
 static void handle_set_320sps(void)
 {
     LOG_INF("Set 320 SPS");
-    struct sensor_value rate = {.val1 = sampleRateMap[NAU7802_RATE_320SPS], .val2 = 0};
+    struct sensor_value rate = {.val1 = NAU7802_RATE_320SPS, .val2 = 0};
     nau7802_attr_set(nau7802, SENSOR_CHAN_ALL, SENSOR_ATTR_SAMPLING_FREQUENCY, &rate);
 }
 

@@ -1,2 +1,14 @@
 source "Kconfig.zephyr"
 rsource "drivers/Kconfig"
+
+config APP_ENABLE_SHELL_CMDS
+    bool "Enable custom shell commands"
+    default y
+    help
+      Enable the registration of custom shell commands.
+
+config APP_ENABLE_NVSRW
+    bool "Enable NVS API to R/W Parameter"
+    default y
+    help
+      Enable the registration of custom shell commands.

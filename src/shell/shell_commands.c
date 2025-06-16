@@ -1,3 +1,5 @@
+#ifdef CONFIG_APP_ENABLE_SHELL_CMDS
+
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/shell/shell.h>
@@ -41,10 +43,12 @@ int cmd_get_calFactor(const struct shell *shell, size_t argc, char **argv)
     return get_calFactor_data(nau7802, cal_weight);
 }
 
+
 int cmd_setCal_nvs(const struct shell *shell, size_t argc, char **argv)
 {
     return set_calData_nvs(nau7802);
 }
+
 
 void cmd_suspend_nau7802Thread(const struct shell *shell, size_t argc, char **argv)
 {
@@ -93,3 +97,5 @@ void register_shell_commands(void)
     SHELL_CMD_REGISTER(nau_set_rate, NULL, "Set NAU7802 rate", cmd_nau_set_sps);
     SHELL_CMD_REGISTER(hello, NULL, "Say Hello", cmd_hello_world);
 }
+
+#endif /* CONFIG_APP_ENABLE_SHELL_CMDS */

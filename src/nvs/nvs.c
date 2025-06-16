@@ -1,4 +1,6 @@
 
+#ifdef CONFIG_APP_ENABLE_NVSRW
+
 #include <zephyr/drivers/flash.h>
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/fs/nvs.h>
@@ -103,3 +105,5 @@ int load_calibration_data_nvs(struct calibDataManuf *cal_dataRead)
             cal_dataRead->zero_offset, cal_dataRead->calibration_factor);
     return 0;
 }
+
+#endif /* CONFIG_APP_ENABLE_NVSRW */

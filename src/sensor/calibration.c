@@ -1,7 +1,9 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include "sensor/nau7802/nau7802.h"
+#ifdef CONFIG_APP_ENABLE_NVSRW
 #include "../nvs/nvs.h"
+#endif
 #include "calibration.h"
 
 LOG_MODULE_REGISTER(CALIBRATION, LOG_LEVEL_DBG);
@@ -97,6 +99,7 @@ int get_calFactor_data(const struct device *dev, float32_t cal_weight)
     return 0;
 }
 
+#ifdef CONFIG_APP_ENABLE_NVSRW
 /**
  * Save calibration data to NVS.
  */
@@ -114,3 +117,4 @@ int set_calData_nvs(const struct device *dev)
     LOG_INF("Calibration data saved to NVS.");
     return 0;
 }
+#endif

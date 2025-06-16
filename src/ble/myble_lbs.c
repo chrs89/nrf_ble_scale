@@ -26,7 +26,7 @@
 
 #include "myble_lbs.h"
 
-LOG_MODULE_DECLARE(NAU7802, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(MYBLE_LBS, LOG_LEVEL_DBG);
 
 // Global variable to store the period time (time between calls)
 static uint32_t prev_time_us = 0; // Store time in microseconds
@@ -227,7 +227,7 @@ int my_lbs_send_sensor_notify(struct sensor_value force_val)
 
 	// Time difference in microseconds
 	uint32_t period_time_us = current_time_us - prev_time_us;
-	// LOG_INF("Period time (time between calls): %d µs", period_time_us);
+	LOG_INF("Period time (time between calls): %d µs", period_time_us);
 
 	prev_time_us = current_time_us;
 

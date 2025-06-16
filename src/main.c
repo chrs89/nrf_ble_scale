@@ -4,11 +4,14 @@
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/kernel/thread.h>
-#include <zephyr/shell/shell.h>
 #include <dk_buttons_and_leds.h>
 
 #include "sensor/nau7802/nau7802.h"
+
+#ifdef CONFIG_APP_ENABLE_SHELL_CMDS
 #include "shell/shell_commands.h"
+#endif
+
 #include "ble/ble_service.h"
 #include "ble/myble_lbs.h"
 #include "sensor/appcall_nau7802.h"
@@ -143,8 +146,10 @@ int main(void)
     int err;
     int blink_status = 0;
 
-    // Shell commands
+// Shell commands
+#ifdef CONFIG_APP_ENABLE_SHELL_CMDS
     register_shell_commands();
+#endif
 
     // Sensor readiness
     if (!device_is_ready(nau7802))
@@ -153,13 +158,15 @@ int main(void)
         return 0;
     }
 
-    // Load Calibration Data from NVS and set to nau7802
+// Load Calibration Data from NVS and set to nau7802
+#ifdef CONFIG_APP_ENABLE_NVSRW
     err = load_calib_fromNVS(nau7802);
     if (err < 0)
     {
         LOG_ERR("Failed to set load calib data from NVS, %d", err);
         return 0;
     }
+#endif
 
     // Set up sensor trigger
     struct sensor_trigger trig = {
