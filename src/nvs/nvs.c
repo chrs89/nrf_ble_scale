@@ -86,13 +86,13 @@ int load_calibration_data_nvs(struct calibDataManuf *cal_dataRead)
     if (ret < 0)
     {
         LOG_ERR("Failed to read calibration data from NVS, error code: %d", ret);
-        // return ret;
+        return ret;
     }
 
     if (ret != sizeof(struct calibDataManuf))
     {
         LOG_WRN("Unexpected NVS size: got %d, expected %d", ret, sizeof(struct calibDataManuf));
-        // return -EINVAL;
+        return -EINVAL;
     }
 
     if (cal_dataRead->magic != CALIB_MAGIC)

@@ -118,6 +118,19 @@ int my_lbs_send_button_state_notify(bool button_state);
  */
 int my_lbs_send_sensor_notify(struct sensor_value force_value);
 
+/** @brief Send batched Sensor_Values as notification
+ *
+ * This function sends an uint32_t  value, typically the value
+ * of a simulated sensor to all connected peers.
+ *
+ * @param[in] sensor_value The value of the simulated sensor.
+ *
+ * @retval 0 If the operation was successful.
+ *           Otherwise, a (negative) error code is returned.
+ */
+int my_lbs_send_batched_notify(const uint8_t *buffer, size_t len);
+
+
 #ifdef __cplusplus
 }
 #endif

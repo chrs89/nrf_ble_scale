@@ -22,6 +22,8 @@
         "calibration.h": "c",
         "ble_service.h": "c",
         "app_nau7802_cmd.h": "c",
-        "nvs.h": "c"
+        "nvs.h": "c",
+        "memory_resource": "c",
+        "random.h": "c"
     }
 }

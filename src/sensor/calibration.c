@@ -91,7 +91,7 @@ int get_calFactor_data(const struct device *dev, float32_t cal_weight)
     float32_t calFactor_f = (sum / 50 - data->zero_offset) / cal_weight;
     sensor_value_from_float(&calFactor, calFactor_f);
     const struct sensor_value *ptr = &calFactor;
-    nau7802_attr_set(dev, SENSOR_CHAN_ALL, SENSOR_ATTR_OFFSET, ptr);
+    nau7802_attr_set(dev, SENSOR_CHAN_ALL, SENSOR_ATTR_Manufacturing_CALIBRATION_FACTOR, ptr);
 
     // data->calibration_factor = (sum / 50 - data->zero_offset) / cal_weight;
     LOG_INF("Calibration factor: %f (for weight: %f)", data->calibration_factor, cal_weight);

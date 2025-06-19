@@ -97,6 +97,12 @@ struct calibDataManuf
     uint32_t magic;
 };
 
+struct force_val_compr
+{
+    int16_t val1;
+    int16_t val2;
+};
+
 /* Define a channel for force reading*/
 enum sensor_channel_nuvoton_nau7802
 {
@@ -105,6 +111,9 @@ enum sensor_channel_nuvoton_nau7802
 
     /* Raw ADC reading */
     SENSOR_CHAN_RAW = SENSOR_CHAN_PRIV_START + 1,
+
+    /* Force reading output in Newtons */
+    SENSOR_CHAN_FORCE_COMPRESSED = SENSOR_CHAN_PRIV_START + 2,
 };
 
 /* Define a channel for force reading*/

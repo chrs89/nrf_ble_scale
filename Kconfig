@@ -12,3 +12,9 @@ config APP_ENABLE_NVSRW
     default y
     help
       Enable the registration of custom shell commands.
+
+config SENSOR_VALUE_PAYLOAD
+    bool "Enable custom shell commands"
+    default y
+    help
+      Enable the registration of custom shell commands.

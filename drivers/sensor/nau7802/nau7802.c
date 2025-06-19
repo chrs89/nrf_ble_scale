@@ -509,6 +509,7 @@ static int channel_get(const struct device *dev, enum sensor_channel chan,
         uval = ((float32_t)(data->sample) - data->zero_offset) * (1 / data->calibration_factor);
         sensor_value_from_float(val, uval);
         break;
+
     case SENSOR_CHAN_RAW:
         uval = (float32_t)(data->sample) * 1.0 + 0; // Operands indicate that on purpose Cal_factor and offset is not affecting value
         sensor_value_from_float(val, uval);

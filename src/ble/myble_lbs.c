@@ -35,6 +35,7 @@ static bool notify_mysensor_enabled;
 static bool indicate_enabled;
 static bool button_state;
 static struct my_lbs_cb lbs_cb;
+uint16_t val_sim;
 
 /* STEP 4 - Define an indication parameter */
 static struct bt_gatt_indicate_params ind_params;
@@ -227,11 +228,11 @@ int my_lbs_send_sensor_notify(struct sensor_value force_val)
 
 	// Time difference in microseconds
 	uint32_t period_time_us = current_time_us - prev_time_us;
-	LOG_INF("Period time (time between calls): %d µs", period_time_us);
+	// LOG_INF("Period time (time between calls): %d µs", period_time_us);
 
 	prev_time_us = current_time_us;
 
-	uint8_t buffer[8];
+	uint8_t buffer[4];
 	int err;
 
 	if (!notify_mysensor_enabled)
@@ -242,16 +243,26 @@ int my_lbs_send_sensor_notify(struct sensor_value force_val)
 	if (!USE_LITTLE_ENDIAN)
 	{
 		// Convert to little-endian format if system is big-endian
-		uint32_t val1_le = to_little_endian(force_val.val1);
-		uint32_t val2_le = to_little_endian(force_val.val2);
-		memcpy(buffer, &val1_le, sizeof(uint32_t));		// Copy val1 (little-endian)
-		memcpy(buffer + 4, &val2_le, sizeof(uint32_t)); // Copy val2 (little-endian)
+		uint16_t val1_le = (int16_t)to_little_endian(force_val.val1);
+		uint16_t val2_le = (int16_t)to_little_endian(force_val.val2);
+		memcpy(buffer, &val1_le, sizeof(uint16_t));		// Copy val1 (little-endian)
+		memcpy(buffer + 4, &val2_le, sizeof(uint16_t)); // Copy val2 (little-endian)
 	}
 	else
 	{
 		// System is little-endian, directly copy values without conversion
-		memcpy(buffer, &force_val.val1, sizeof(int32_t));
-		memcpy(buffer + 4, &force_val.val2, sizeof(int32_t));
+		// uint16_t val1 = (int16_t)force_val.val1;
+		// uint16_t val2 = (int16_t)(force_val.val2 / 1000); // 3-Digits
+		uint16_t val1 = val_sim;
+		uint16_t val2 = 111111;
+		memcpy(buffer, &val1, sizeof(int16_t));
+		memcpy(buffer + 2, &val2, sizeof(int16_t));
+
+		val_sim++;
+		if (val_sim == 10000)
+		{
+			val_sim = 0;
+		}
 
 		// LOG_INF("Sensor val1 : % d val2 : % d, float_value: %f, buffer: %d", force_val.val1, force_val.val2, sensor_value_to_float(&force_val), buffer);
 		// LOG_INF("buf[0] : %d, buf[1] : %d, buf[2] %d, buf[3] %d, buf[4] : %d, buf[5] : %d, buf[6] %d, buf[7] %d", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6], buffer[7]);
@@ -265,6 +276,28 @@ int my_lbs_send_sensor_notify(struct sensor_value force_val)
 	}
 
 	return 0;
+}
+
+// Exposed BLE notify function for batched samples
+int my_lbs_send_batched_notify(const uint8_t *buffer, size_t len)
+{
+	if (!notify_mysensor_enabled)
+	{
+		return -EACCES;
+	}
+
+	if (len == 0 || buffer == NULL || len > 244)
+	{
+		return -EINVAL;
+	}
+
+	int err = bt_gatt_notify(NULL, &my_lbs_svc.attrs[7], buffer, len);
+	if (err)
+	{
+		LOG_ERR("Batched notify failed (err %d)", err);
+	}
+
+	return err;
 }
 
 void print_gatt_attributes(void)
