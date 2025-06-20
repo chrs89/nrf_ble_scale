@@ -42,7 +42,7 @@ static K_WORK_DELAYABLE_DEFINE(ble_send_work, ble_send_work_handler);
 
 void start_ble_send_loop(void)
 {
-    k_work_schedule(&ble_send_work, K_MSEC(BLE_CONN_INTERVAL_MS));
+    k_work_schedule(&ble_send_work, K_NO_WAIT);
 }
 
 K_MSGQ_DEFINE(sensor_data_queue, sizeof(sens_val_t), 128, 4);
@@ -53,6 +53,7 @@ K_SEM_DEFINE(bleSend_action_sem, 0, 1);
 #include <zephyr/sys/atomic.h>
 static atomic_t producer_cb_counter = ATOMIC_INIT(0);
 static atomic_t consumer_cb_counter = ATOMIC_INIT(0);
+static atomic_t ble_loop_running = ATOMIC_INIT(0);
 static struct k_thread log_rate_id;
 K_THREAD_STACK_DEFINE(worker_stack_1, 512);
 
@@ -128,18 +129,18 @@ static void ble_send_work_handler(struct k_work *work)
 
     atomic_inc(&consumer_cb_counter);
 
+    bool prod_active = (k_msgq_num_used_get(&sensor_data_queue) > 0) ? true : false;
+
     uint8_t ble_buffer[244];
-    struct sensor_value sample;
+    struct force_val_compr val_compr;
     size_t sample_count = 0;
 
     while (sample_count < MAX_SAMPLES_PER_NOTIF)
     {
-        if (k_msgq_get(&sensor_data_queue, &sample, K_NO_WAIT) == 0)
+        if (k_msgq_get(&sensor_data_queue, &val_compr, K_NO_WAIT) == 0)
         {
-            int16_t val1 = (int16_t)sample.val1;
-            int16_t val2 = (int16_t)sample.val2;
-            memcpy(&ble_buffer[sample_count * SAMPLE_SIZE], &val1, 2);
-            memcpy(&ble_buffer[sample_count * SAMPLE_SIZE + 2], &val2, 2);
+
+            memcpy(&ble_buffer[sample_count * SAMPLE_SIZE], &val_compr, SAMPLE_SIZE);
             sample_count++;
         }
         else
@@ -158,8 +159,18 @@ static void ble_send_work_handler(struct k_work *work)
         }
     }
 
+    /*Adaptive Re-Scheduling if Producer is Active*/
     // Re-schedule for next interval (K_Work Delayable Concept)
-    k_work_schedule(&ble_send_work, K_MSEC(BLE_CONN_INTERVAL_MS));
+    if (prod_active)
+    {
+        k_work_schedule(&ble_send_work, K_MSEC(BLE_CONN_INTERVAL_MS));
+    }
+    else
+    {
+        // Stop loop — it will be restarted by the producer when active again
+        atomic_set(&ble_loop_running, 0);
+        LOG_DBG("BLE loop stopped — no pending data");
+    }
 }
 
 // === Sensor Callback ===
@@ -167,6 +178,10 @@ const struct device *const nau7802 = DEVICE_DT_GET_ONE(nuvoton_nau7802);
 
 void sensor_data_ready_callback(const struct device *dev, const struct sensor_trigger *trig)
 {
+    /*TEST PURPOSE SIMULATE SENSOR DATA*/
+    static uint16_t simulated_value = 0;
+    static uint16_t val2 = 1234;
+
     atomic_inc(&producer_cb_counter); // Count every call
 
     struct sensor_value force_val;
@@ -177,17 +192,49 @@ void sensor_data_ready_callback(const struct device *dev, const struct sensor_tr
     }
 
     struct force_val_compr val_compr;
-    val_compr.val1 = (int16_t)(force_val.val1);
-    val_compr.val2 = (int16_t)(force_val.val2 / 1000);
+    val_compr.val1 = (int16_t)(simulated_value);
+    val_compr.val2 = (int16_t)val2;
+
+    // Increment and wrap
+    simulated_value += 1;
+    if (simulated_value > 10000)
+    {
+        simulated_value = 0;
+    }
 
     if (k_msgq_put(&sensor_data_queue, &val_compr, K_NO_WAIT) == 0)
     {
-        k_sem_give(&bleSend_action_sem); // Nothing to give
+        if (atomic_cas(&ble_loop_running, 0, 1))
+        {
+            // Start delayed BLE send work
+            start_ble_send_loop();
+            LOG_DBG("BLE loop started by producer");
+        }
     }
     else
     {
         LOG_WRN("Sensor data queue full — dropping data");
     }
+
+    // struct sensor_value force_val;
+    // if (nau7802_sample_fetch(dev) < 0 || nau7802_channel_get(dev, SENSOR_CHAN_FORCE, &force_val) < 0)
+    // {
+    //     LOG_ERR("Failed to fetch or get sensor value");
+    //     return;
+    // }
+
+    // struct force_val_compr val_compr;
+    // val_compr.val1 = (int16_t)(force_val.val1);
+    // val_compr.val2 = (int16_t)(force_val.val2 / 1000);
+
+    // if (k_msgq_put(&sensor_data_queue, &val_compr, K_NO_WAIT) == 0)
+    // {
+    //     k_sem_give(&bleSend_action_sem); // Nothing to give
+    // }
+    // else
+    // {
+    //     LOG_WRN("Sensor data queue full — dropping data");
+    // }
 }
 
 // === Init Button ===
@@ -265,9 +312,6 @@ int main(void)
 
     // BLE advertising
     ble_start_advertising();
-
-    // Start delayed BLE send work
-    start_ble_send_loop();
 
     // LOG TREAD ATOMMIC
     k_thread_create(&log_rate_id, worker_stack_1, 512, (k_thread_entry_t)log_callback_rate_thread, NULL, NULL, NULL, 5, 0, K_NO_WAIT);

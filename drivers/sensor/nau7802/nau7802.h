@@ -97,8 +97,7 @@ struct calibDataManuf
     uint32_t magic;
 };
 
-struct force_val_compr
-{
+struct __packed force_val_compr {
     int16_t val1;
     int16_t val2;
 };
