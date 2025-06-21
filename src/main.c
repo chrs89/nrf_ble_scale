@@ -129,7 +129,7 @@ static void ble_send_work_handler(struct k_work *work)
 
     atomic_inc(&consumer_cb_counter);
 
-    bool prod_active = (k_msgq_num_used_get(&sensor_data_queue) > 0) ? true : false;
+    bool prod_active = k_msgq_num_used_get(&sensor_data_queue) > 0;
 
     uint8_t ble_buffer[244];
     struct force_val_compr val_compr;
@@ -312,9 +312,26 @@ int main(void)
 
     // BLE advertising
     ble_start_advertising();
+ err = pairing_key_generate();
+    if (err)
+   
+    {
+        printk("Failed to generate pairing keys (err %d)\n", err);
+        return 0;
+    }
+
+    if (!IS_ENABLED(BT_POWER_PROFILING_NFC_DISABLED))
+    {
+        err = nfc_init();
+        if (err)
+        {
+            printk("Failed to initialize NFC (err %d)\n", err);
+            return 0;
+        }
+    }
 
     // LOG TREAD ATOMMIC
-    k_thread_create(&log_rate_id, worker_stack_1, 512, (k_thread_entry_t)log_callback_rate_thread, NULL, NULL, NULL, 5, 0, K_NO_WAIT);
+    // k_thread_create(&log_rate_id, worker_stack_1, 512, (k_thread_entry_t)log_callback_rate_thread, NULL, NULL, NULL, 5, 0, K_NO_WAIT);
 
     // LED heartbeat loop
     for (;;)
