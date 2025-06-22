@@ -25,6 +25,10 @@
         "nvs.h": "c",
         "memory_resource": "c",
         "random.h": "c",
-        "algorithm": "c"
+        "algorithm": "c",
+        "nfc_t2t_lib.h": "c",
+        "msg.h": "c",
+        "record.h": "c",
+        "poweroff.h": "c"
     }
 }

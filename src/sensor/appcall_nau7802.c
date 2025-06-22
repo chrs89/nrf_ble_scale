@@ -2,12 +2,14 @@
 #include <zephyr/logging/log.h>
 #ifdef CONFIG_APP_ENABLE_NVSRW
 #include "../nvs/nvs.h"
+#include "../ble/ble_service.h"
 #endif
 #include "calibration.h"
 
 LOG_MODULE_REGISTER(NAU7802_Application, LOG_LEVEL_DBG);
 
 extern const struct device *const nau7802; // May not be needed if passed as argument
+
 
 #ifdef CONFIG_APP_ENABLE_NVSRW
 int load_calib_fromNVS(const struct device *dev)
@@ -134,6 +136,10 @@ static void handle_get_calibFactor_5kg(void)
     float32_t selected_weight = (float32_t)calibrationWeightMap[CALIB_WEIGHT_5000G_IDX];
     get_calFactor_data(nau7802, selected_weight);
 }
+
+
+
+
 
 // === Handler Table ===
 

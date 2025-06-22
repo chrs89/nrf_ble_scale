@@ -3,27 +3,21 @@
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/addr.h>
+#include <zephyr/settings/settings.h>
 #include <dk_buttons_and_leds.h>
 #include "myble_lbs.h"
 #include <zephyr/logging/log.h>
 
-#include <nfc_t2t_lib.h>
-
-#include <nfc/ndef/msg.h>
-#include <nfc/ndef/record.h>
-#include <nfc/ndef/ch.h>
-#include <nfc/ndef/ch_msg.h>
 #include <nfc/ndef/le_oob_rec.h>
 
-#include <helpers/nrfx_reset_reason.h>
-
 #include "ble_service.h"
+#include <zephyr/pm/device.h>
 
 #define NFC_BUFFER_SIZE 1024
+#define SYSTEM_OFF_DELAY 5
 
 static struct bt_le_oob oob_local;
 static uint8_t tk_local[NFC_NDEF_LE_OOB_REC_TK_LEN];
-static uint8_t nfc_buffer[NFC_BUFFER_SIZE];
 
 LOG_MODULE_REGISTER(BLE_SERVICE, LOG_LEVEL_DBG);
 
@@ -104,45 +98,6 @@ static void update_mtu(struct bt_conn *conn)
     if (err)
     {
         LOG_ERR("bt_gatt_exchange_mtu failed (err %d)", err);
-    }
-}
-
-static void nfc_callback(void *context, nfc_t2t_event_t event, const uint8_t *data,
-                         size_t data_length)
-{
-    int err;
-    static bool adv_permission;
-
-    switch (event)
-    {
-    case NFC_T2T_EVENT_FIELD_ON:
-        /* Try to cancel system off. */
-        // err = k_work_cancel_delayable(&system_off_work);
-        if (err)
-        {
-            /* Action will be continued on system on. */
-            return;
-        }
-
-        // set_led_on(NFC_FIELD_STATUS_LED);
-        adv_permission = true;
-        break;
-
-    case NFC_T2T_EVENT_FIELD_OFF:
-        // set_led_off(NFC_FIELD_STATUS_LED);
-        break;
-
-    case NFC_T2T_EVENT_DATA_READ:
-        if (adv_permission)
-        {
-            // k_work_submit(&adv_work);
-            adv_permission = false;
-        }
-
-        break;
-
-    default:
-        break;
     }
 }
 
@@ -410,80 +365,51 @@ int ble_service_init(void)
     return 0;
 }
 
-/*NFC*/
-static int nfc_oob_data_setup(size_t *size)
-{
-    static const uint8_t ndef_record_count = 2;
-    static const uint8_t ch_record_count = 1;
-
-    int err;
-    struct nfc_ndef_le_oob_rec_payload_desc oob_rec_payload;
-    struct nfc_ndef_ch_msg_records ch_msg_records;
-
-    NFC_NDEF_MSG_DEF(ndef_msg, ndef_record_count);
-
-    NFC_NDEF_LE_OOB_RECORD_DESC_DEF(oob_rec, '0', &oob_rec_payload);
-    NFC_NDEF_CH_AC_RECORD_DESC_DEF(ac_rec, NFC_AC_CPS_ACTIVE, 1, "0", 0);
-    NFC_NDEF_CH_HS_RECORD_DESC_DEF(hs_record, NFC_NDEF_CH_MSG_MAJOR_VER,
-                                   NFC_NDEF_CH_MSG_MINOR_VER, ch_record_count);
-
-    memset(&oob_rec_payload, 0, sizeof(oob_rec_payload));
-
-    oob_rec_payload.addr = &oob_local.addr;
-    oob_rec_payload.appearance = NFC_NDEF_LE_OOB_REC_APPEARANCE(bt_get_appearance());
-    oob_rec_payload.flags = NFC_NDEF_LE_OOB_REC_FLAGS(BT_LE_AD_NO_BREDR);
-    oob_rec_payload.le_role =
-        NFC_NDEF_LE_OOB_REC_LE_ROLE(NFC_NDEF_LE_OOB_REC_LE_ROLE_PERIPH_ONLY);
-    oob_rec_payload.le_sc_data = &oob_local.le_sc_data;
-    oob_rec_payload.local_name = bt_get_name();
-    oob_rec_payload.tk_value = tk_local;
-
-    ch_msg_records.ac = &NFC_NDEF_CH_AC_RECORD_DESC(ac_rec);
-    ch_msg_records.carrier = &NFC_NDEF_LE_OOB_RECORD_DESC(oob_rec);
-    ch_msg_records.cnt = ch_record_count;
-
-    err = nfc_ndef_ch_msg_hs_create(&NFC_NDEF_MSG(ndef_msg),
-                                    &NFC_NDEF_CH_RECORD_DESC(hs_record), &ch_msg_records);
-    if (err)
-    {
-        printk("Failed to create Connection Handover NDEF message (err %d)\n", err);
-        return err;
-    }
-
-    return nfc_ndef_msg_encode(&NFC_NDEF_MSG(ndef_msg), nfc_buffer, size);
-}
-
-int nfc_init(void)
+int init_ble_service(void)
 {
     int err;
-    size_t nfc_buffer_size = sizeof(nfc_buffer);
 
-    err = nfc_t2t_setup(nfc_callback, NULL);
+    k_work_init(&adv_work, adv_work_handler);
+    bt_conn_cb_register(&connection_callbacks);
+
+    err = bt_enable(NULL);
     if (err)
     {
-        printk("Failed to setup NFC T2T library (err %d)\n", err);
+        LOG_ERR("Bluetooth init failed (err %d)", err);
         return err;
     }
 
-    err = nfc_oob_data_setup(&nfc_buffer_size);
-    if (err)
+    if (IS_ENABLED(CONFIG_SETTINGS))
     {
-        printk("Failed to setup NFC OOB data (err %d)\n", err);
-        return err;
+        err = settings_load();
+        if (err)
+        {
+            printk("Failed to load settings (err %d)\n", err);
+            return 0;
+        }
     }
 
-    err = nfc_t2t_payload_set(nfc_buffer, nfc_buffer_size);
+    err = bt_conn_auth_info_cb_register(&conn_auth_info_callbacks);
     if (err)
     {
-        printk("Failed to set NFC T2T payload (err %d)\n", err);
-        return err;
+        printk("Failed to register authorization info callbacks (err %d)\n", err);
+        return 0;
     }
 
-    err = nfc_t2t_emulation_start();
+    err = bt_conn_auth_cb_register(&conn_auth_callbacks);
     if (err)
     {
-        printk("Failed to start NFC T2T emulation (err %d)\n", err);
+        printk("Failed to register authorization callbacks (err %d)\n", err);
+        return 0;
     }
 
-    return err;
+    err = pairing_key_generate();
+    if (err)
+    {
+        printk("Failed to generate pairing keys (err %d)\n", err);
+        return 0;
+    }
+
+    LOG_INF("BLE SERVICE initialized");
+    return 0;
 }

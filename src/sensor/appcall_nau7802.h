@@ -18,4 +18,6 @@ int load_calib_fromNVS(const struct device *dev);
 /*Request Handler Write States from Central*/
 int nau7802_execute_command(enum app_nau7802_command cmd);
 
+void reset_reason_print(void);
+
 #endif

@@ -15,6 +15,7 @@ target_sources(app PRIVATE
     src/nvs/nvs.c
     src/sensor/appcall_nau7802.c
     src/sensor/calibration.c
+    src/power_off/poweroff.c
 )
 
 # Include directories for header files

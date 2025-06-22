@@ -16,13 +16,13 @@
 #include "ble/myble_lbs.h"
 #include "sensor/appcall_nau7802.h"
 #include "app_nau7802_cmd.h"
+#include "power_off/poweroff.h"
 
 LOG_MODULE_REGISTER(MAIN_APPLICATION, LOG_LEVEL_DBG);
 
 // === Definitions ===
 #define RUN_STATUS_LED DK_LED1
 #define CON_STATUS_LED DK_LED2
-#define USER_LED DK_LED3
 #define USER_BUTTON DK_BTN1_MSK
 
 #define STACKSIZE 1024
@@ -80,7 +80,7 @@ static bool app_button_state;
 
 static void app_led_cb(bool led_state)
 {
-    dk_set_led(USER_LED, led_state);
+    // dk_set_led(USER_LED, led_state);
 }
 
 static bool app_button_cb(void)
@@ -266,7 +266,7 @@ int main(void)
         return 0;
     }
 
-    // Load Calibration Data from NVS and set to nau7802
+// Load Calibration Data from NVS and set to nau7802
 #ifdef CONFIG_APP_ENABLE_NVSRW
     err = load_calib_fromNVS(nau7802);
     if (err < 0)
@@ -298,10 +298,12 @@ int main(void)
     if (err)
         return -1;
 
-    // BLE service
-    err = ble_service_init();
+    err = init_ble_service();
     if (err)
+    {
+        LOG_ERR("Failed to init BLE Service (err:%d)", err);
         return -1;
+    }
 
     err = my_lbs_init(&app_callbacks);
     if (err)
@@ -312,22 +314,15 @@ int main(void)
 
     // BLE advertising
     ble_start_advertising();
- err = pairing_key_generate();
-    if (err)
-   
-    {
-        printk("Failed to generate pairing keys (err %d)\n", err);
-        return 0;
-    }
 
-    if (!IS_ENABLED(BT_POWER_PROFILING_NFC_DISABLED))
+    // POWER_OFF
+    poweroff();
+    print_reset_reason();
+
+    if (start_nfc() < 0)
     {
-        err = nfc_init();
-        if (err)
-        {
-            printk("Failed to initialize NFC (err %d)\n", err);
-            return 0;
-        }
+        printk("ERROR: NFC configuration failed\n");
+        return -1;
     }
 
     // LOG TREAD ATOMMIC
